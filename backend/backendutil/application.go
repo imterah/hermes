@@ -1,7 +1,6 @@
 package backendutil
 
 import (
-	"fmt"
 	"net"
 	"os"
 
@@ -35,21 +34,15 @@ func (helper *BackendApplicationHelper) Start() error {
 	log.Debug("Sucessfully connected")
 
 	for {
-		commandType, commandRaw, err := commonbackend.Unmarshal(helper.socket)
+		_, commandRaw, err := commonbackend.Unmarshal(helper.socket)
 
 		if err != nil {
 			return err
 		}
 
-		switch commandType {
-		case "start":
-			command, ok := commandRaw.(*commonbackend.Start)
-
-			if !ok {
-				return fmt.Errorf("failed to typecast")
-			}
-
-			ok, err = helper.Backend.StartBackend(command.Arguments)
+		switch command := commandRaw.(type) {
+		case *commonbackend.Start:
+			ok, err := helper.Backend.StartBackend(command.Arguments)
 
 			var (
 				message    string
@@ -78,13 +71,7 @@ func (helper *BackendApplicationHelper) Start() error {
 			}
 
 			helper.socket.Write(responseMarshalled)
-		case "backendStatusRequest":
-			_, ok := commandRaw.(*commonbackend.BackendStatusRequest)
-
-			if !ok {
-				return fmt.Errorf("failed to typecast")
-			}
-
+		case *commonbackend.BackendStatusRequest:
 			ok, err := helper.Backend.GetBackendStatus()
 
 			var (
@@ -114,14 +101,8 @@ func (helper *BackendApplicationHelper) Start() error {
 			}
 
 			helper.socket.Write(responseMarshalled)
-		case "stop":
-			_, ok := commandRaw.(*commonbackend.Stop)
-
-			if !ok {
-				return fmt.Errorf("failed to typecast")
-			}
-
-			ok, err = helper.Backend.StopBackend()
+		case *commonbackend.Stop:
+			ok, err := helper.Backend.StopBackend()
 
 			var (
 				message    string
@@ -150,14 +131,8 @@ func (helper *BackendApplicationHelper) Start() error {
 			}
 
 			helper.socket.Write(responseMarshalled)
-		case "addProxy":
-			command, ok := commandRaw.(*commonbackend.AddProxy)
-
-			if !ok {
-				return fmt.Errorf("failed to typecast")
-			}
-
-			ok, err = helper.Backend.StartProxy(command)
+		case *commonbackend.AddProxy:
+			ok, err := helper.Backend.StartProxy(command)
 			var hasAnyFailed bool
 
 			if !ok {
@@ -185,14 +160,8 @@ func (helper *BackendApplicationHelper) Start() error {
 			}
 
 			helper.socket.Write(responseMarshalled)
-		case "removeProxy":
-			command, ok := commandRaw.(*commonbackend.RemoveProxy)
-
-			if !ok {
-				return fmt.Errorf("failed to typecast")
-			}
-
-			ok, err = helper.Backend.StopProxy(command)
+		case *commonbackend.RemoveProxy:
+			ok, err := helper.Backend.StopProxy(command)
 			var hasAnyFailed bool
 
 			if !ok {
@@ -220,13 +189,7 @@ func (helper *BackendApplicationHelper) Start() error {
 			}
 
 			helper.socket.Write(responseMarshalled)
-		case "proxyConnectionsRequest":
-			_, ok := commandRaw.(*commonbackend.ProxyConnectionsRequest)
-
-			if !ok {
-				return fmt.Errorf("failed to typecast")
-			}
-
+		case *commonbackend.ProxyConnectionsRequest:
 			connections := helper.Backend.GetAllClientConnections()
 
 			serverParams := &commonbackend.ProxyConnectionsResponse{
@@ -243,13 +206,7 @@ func (helper *BackendApplicationHelper) Start() error {
 			if _, err = helper.socket.Write(byteData); err != nil {
 				return err
 			}
-		case "checkClientParameters":
-			command, ok := commandRaw.(*commonbackend.CheckClientParameters)
-
-			if !ok {
-				return fmt.Errorf("failed to typecast")
-			}
-
+		case *commonbackend.CheckClientParameters:
 			resp := helper.Backend.CheckParametersForConnections(command)
 			resp.Type = "checkParametersResponse"
 			resp.InResponseTo = "checkClientParameters"
@@ -263,13 +220,7 @@ func (helper *BackendApplicationHelper) Start() error {
 			if _, err = helper.socket.Write(byteData); err != nil {
 				return err
 			}
-		case "checkServerParameters":
-			command, ok := commandRaw.(*commonbackend.CheckServerParameters)
-
-			if !ok {
-				return fmt.Errorf("failed to typecast")
-			}
-
+		case *commonbackend.CheckServerParameters:
 			resp := helper.Backend.CheckParametersForBackend(command.Arguments)
 			resp.Type = "checkParametersResponse"
 			resp.InResponseTo = "checkServerParameters"
@@ -283,6 +234,8 @@ func (helper *BackendApplicationHelper) Start() error {
 			if _, err = helper.socket.Write(byteData); err != nil {
 				return err
 			}
+		default:
+			log.Warnf("Unsupported command recieved: %T", command)
 		}
 	}
 }

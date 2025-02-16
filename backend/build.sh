@@ -14,12 +14,12 @@ echo "building externalbackendlauncher"
 go build -ldflags="-s -w" -trimpath .
 popd > /dev/null
 
-pushd sshappbackend/remote-code > /dev/null
-echo "building sshappbackend/remote-code"
-if [ ! -d bin ]; then
-    mkdir bin
+if [ ! -d "sshappbackend/local-code/remote-bin" ]; then
+  mkdir "sshappbackend/local-code/remote-bin"
 fi
 
+pushd sshappbackend/remote-code > /dev/null
+echo "building sshappbackend/remote-code"
 # Disable dynamic linking by disabling CGo.
 # We need to make the remote code as generic as possible, so we do this
 echo " - building for arm64"
