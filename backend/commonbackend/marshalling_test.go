@@ -9,7 +9,7 @@ import (
 
 var logLevel = os.Getenv("HERMES_LOG_LEVEL")
 
-func TestStartCommandMarshalSupport(t *testing.T) {
+func TestStart(t *testing.T) {
 	commandInput := &Start{
 		Type:      "start",
 		Arguments: []byte("Hello from automated testing"),
@@ -53,7 +53,7 @@ func TestStartCommandMarshalSupport(t *testing.T) {
 	}
 }
 
-func TestStopCommandMarshalSupport(t *testing.T) {
+func TestStop(t *testing.T) {
 	commandInput := &Stop{
 		Type: "stop",
 	}
@@ -92,7 +92,7 @@ func TestStopCommandMarshalSupport(t *testing.T) {
 	}
 }
 
-func TestAddConnectionCommandMarshalSupport(t *testing.T) {
+func TestAddConnection(t *testing.T) {
 	commandInput := &AddProxy{
 		Type:       "addProxy",
 		SourceIP:   "192.168.0.139",
@@ -155,7 +155,7 @@ func TestAddConnectionCommandMarshalSupport(t *testing.T) {
 	}
 }
 
-func TestRemoveConnectionCommandMarshalSupport(t *testing.T) {
+func TestRemoveConnection(t *testing.T) {
 	commandInput := &RemoveProxy{
 		Type:       "removeProxy",
 		SourceIP:   "192.168.0.139",
@@ -218,7 +218,7 @@ func TestRemoveConnectionCommandMarshalSupport(t *testing.T) {
 	}
 }
 
-func TestGetAllConnectionsCommandMarshalSupport(t *testing.T) {
+func TestGetAllConnections(t *testing.T) {
 	commandInput := &ProxyConnectionsResponse{
 		Type: "proxyConnectionsResponse",
 		Connections: []*ProxyClientConnection{
@@ -309,7 +309,7 @@ func TestGetAllConnectionsCommandMarshalSupport(t *testing.T) {
 	}
 }
 
-func TestCheckClientParametersMarshalSupport(t *testing.T) {
+func TestCheckClientParameters(t *testing.T) {
 	commandInput := &CheckClientParameters{
 		Type:       "checkClientParameters",
 		SourceIP:   "192.168.0.139",
@@ -372,7 +372,7 @@ func TestCheckClientParametersMarshalSupport(t *testing.T) {
 	}
 }
 
-func TestCheckServerParametersMarshalSupport(t *testing.T) {
+func TestCheckServerParameters(t *testing.T) {
 	commandInput := &CheckServerParameters{
 		Type:      "checkServerParameters",
 		Arguments: []byte("Hello from automated testing"),
@@ -416,7 +416,7 @@ func TestCheckServerParametersMarshalSupport(t *testing.T) {
 	}
 }
 
-func TestCheckParametersResponseMarshalSupport(t *testing.T) {
+func TestCheckParametersResponse(t *testing.T) {
 	commandInput := &CheckParametersResponse{
 		Type:         "checkParametersResponse",
 		InResponseTo: "checkClientParameters",
@@ -473,7 +473,7 @@ func TestCheckParametersResponseMarshalSupport(t *testing.T) {
 	}
 }
 
-func TestBackendStatusRequestMarshalSupport(t *testing.T) {
+func TestBackendStatusRequest(t *testing.T) {
 	commandInput := &BackendStatusRequest{
 		Type: "backendStatusRequest",
 	}
@@ -512,7 +512,7 @@ func TestBackendStatusRequestMarshalSupport(t *testing.T) {
 	}
 }
 
-func TestBackendStatusResponseMarshalSupport(t *testing.T) {
+func TestBackendStatusResponse(t *testing.T) {
 	commandInput := &BackendStatusResponse{
 		Type:       "backendStatusResponse",
 		IsRunning:  true,
@@ -569,7 +569,7 @@ func TestBackendStatusResponseMarshalSupport(t *testing.T) {
 	}
 }
 
-func TestProxyStatusRequestMarshalSupport(t *testing.T) {
+func TestProxyStatusRequest(t *testing.T) {
 	commandInput := &ProxyStatusRequest{
 		Type:       "proxyStatusRequest",
 		SourceIP:   "192.168.0.139",
@@ -632,7 +632,7 @@ func TestProxyStatusRequestMarshalSupport(t *testing.T) {
 	}
 }
 
-func TestProxyStatusResponseMarshalSupport(t *testing.T) {
+func TestProxyStatusResponse(t *testing.T) {
 	commandInput := &ProxyStatusResponse{
 		Type:       "proxyStatusResponse",
 		SourceIP:   "192.168.0.139",
@@ -701,7 +701,7 @@ func TestProxyStatusResponseMarshalSupport(t *testing.T) {
 	}
 }
 
-func TestProxyConnectionRequestMarshalSupport(t *testing.T) {
+func TestProxyConnectionRequest(t *testing.T) {
 	commandInput := &ProxyInstanceRequest{
 		Type: "proxyInstanceRequest",
 	}
@@ -740,7 +740,7 @@ func TestProxyConnectionRequestMarshalSupport(t *testing.T) {
 	}
 }
 
-func TestProxyConnectionResponseMarshalSupport(t *testing.T) {
+func TestProxyConnectionResponse(t *testing.T) {
 	commandInput := &ProxyInstanceResponse{
 		Type: "proxyInstanceResponse",
 		Proxies: []*ProxyInstance{

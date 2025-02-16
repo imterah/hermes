@@ -4,6 +4,6 @@ package backendutil
 
 var endProfileFunc func()
 
-func configureAndLaunchBackgroundProfilingTasks() error {
+func ConfigureProfiling() error {
 	return nil
 }

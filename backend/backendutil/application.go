@@ -18,7 +18,7 @@ type BackendApplicationHelper struct {
 
 func (helper *BackendApplicationHelper) Start() error {
 	log.Debug("BackendApplicationHelper is starting")
-	err := configureAndLaunchBackgroundProfilingTasks()
+	err := ConfigureProfiling()
 
 	if err != nil {
 		return err
