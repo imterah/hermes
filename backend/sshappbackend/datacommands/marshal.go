@@ -16,7 +16,7 @@ const (
 )
 
 // Marshal takes a command (pointer to one of our structs) and converts it to a byte slice.
-func Marshal(_ string, command interface{}) ([]byte, error) {
+func Marshal(command interface{}) ([]byte, error) {
 	switch cmd := command.(type) {
 	// ProxyStatusRequest: 1 byte for the command ID + 2 bytes for the ProxyID.
 	case *ProxyStatusRequest:

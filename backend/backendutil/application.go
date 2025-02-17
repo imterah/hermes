@@ -34,7 +34,7 @@ func (helper *BackendApplicationHelper) Start() error {
 	log.Debug("Sucessfully connected")
 
 	for {
-		_, commandRaw, err := commonbackend.Unmarshal(helper.socket)
+		commandRaw, err := commonbackend.Unmarshal(helper.socket)
 
 		if err != nil {
 			return err
@@ -57,13 +57,12 @@ func (helper *BackendApplicationHelper) Start() error {
 			}
 
 			response := &commonbackend.BackendStatusResponse{
-				Type:       "backendStatusResponse",
 				IsRunning:  ok,
 				StatusCode: statusCode,
 				Message:    message,
 			}
 
-			responseMarshalled, err := commonbackend.Marshal(response.Type, response)
+			responseMarshalled, err := commonbackend.Marshal(response)
 
 			if err != nil {
 				log.Error("failed to marshal response: %s", err.Error())
@@ -87,13 +86,12 @@ func (helper *BackendApplicationHelper) Start() error {
 			}
 
 			response := &commonbackend.BackendStatusResponse{
-				Type:       "backendStatusResponse",
 				IsRunning:  ok,
 				StatusCode: statusCode,
 				Message:    message,
 			}
 
-			responseMarshalled, err := commonbackend.Marshal(response.Type, response)
+			responseMarshalled, err := commonbackend.Marshal(response)
 
 			if err != nil {
 				log.Error("failed to marshal response: %s", err.Error())
@@ -117,13 +115,12 @@ func (helper *BackendApplicationHelper) Start() error {
 			}
 
 			response := &commonbackend.BackendStatusResponse{
-				Type:       "backendStatusResponse",
 				IsRunning:  !ok,
 				StatusCode: statusCode,
 				Message:    message,
 			}
 
-			responseMarshalled, err := commonbackend.Marshal(response.Type, response)
+			responseMarshalled, err := commonbackend.Marshal(response)
 
 			if err != nil {
 				log.Error("failed to marshal response: %s", err.Error())
@@ -144,7 +141,6 @@ func (helper *BackendApplicationHelper) Start() error {
 			}
 
 			response := &commonbackend.ProxyStatusResponse{
-				Type:       "proxyStatusResponse",
 				SourceIP:   command.SourceIP,
 				SourcePort: command.SourcePort,
 				DestPort:   command.DestPort,
@@ -152,7 +148,7 @@ func (helper *BackendApplicationHelper) Start() error {
 				IsActive:   !hasAnyFailed,
 			}
 
-			responseMarshalled, err := commonbackend.Marshal(response.Type, response)
+			responseMarshalled, err := commonbackend.Marshal(response)
 
 			if err != nil {
 				log.Error("failed to marshal response: %s", err.Error())
@@ -173,7 +169,6 @@ func (helper *BackendApplicationHelper) Start() error {
 			}
 
 			response := &commonbackend.ProxyStatusResponse{
-				Type:       "proxyStatusResponse",
 				SourceIP:   command.SourceIP,
 				SourcePort: command.SourcePort,
 				DestPort:   command.DestPort,
@@ -181,7 +176,7 @@ func (helper *BackendApplicationHelper) Start() error {
 				IsActive:   hasAnyFailed,
 			}
 
-			responseMarshalled, err := commonbackend.Marshal(response.Type, response)
+			responseMarshalled, err := commonbackend.Marshal(response)
 
 			if err != nil {
 				log.Error("failed to marshal response: %s", err.Error())
@@ -193,11 +188,10 @@ func (helper *BackendApplicationHelper) Start() error {
 			connections := helper.Backend.GetAllClientConnections()
 
 			serverParams := &commonbackend.ProxyConnectionsResponse{
-				Type:        "proxyConnectionsResponse",
 				Connections: connections,
 			}
 
-			byteData, err := commonbackend.Marshal(serverParams.Type, serverParams)
+			byteData, err := commonbackend.Marshal(serverParams)
 
 			if err != nil {
 				return err
@@ -208,10 +202,9 @@ func (helper *BackendApplicationHelper) Start() error {
 			}
 		case *commonbackend.CheckClientParameters:
 			resp := helper.Backend.CheckParametersForConnections(command)
-			resp.Type = "checkParametersResponse"
 			resp.InResponseTo = "checkClientParameters"
 
-			byteData, err := commonbackend.Marshal(resp.Type, resp)
+			byteData, err := commonbackend.Marshal(resp)
 
 			if err != nil {
 				return err
@@ -222,10 +215,9 @@ func (helper *BackendApplicationHelper) Start() error {
 			}
 		case *commonbackend.CheckServerParameters:
 			resp := helper.Backend.CheckParametersForBackend(command.Arguments)
-			resp.Type = "checkParametersResponse"
 			resp.InResponseTo = "checkServerParameters"
 
-			byteData, err := commonbackend.Marshal(resp.Type, resp)
+			byteData, err := commonbackend.Marshal(resp)
 
 			if err != nil {
 				return err

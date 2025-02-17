@@ -9,11 +9,12 @@ import (
 
 // Unmarshal reads from the provided connection and returns
 // the message type (as a string), the unmarshalled struct, or an error.
-func Unmarshal(conn io.Reader) (string, interface{}, error) {
+func Unmarshal(conn io.Reader) (interface{}, error) {
 	// Every command starts with a 1-byte command ID.
 	header := make([]byte, 1)
+
 	if _, err := io.ReadFull(conn, header); err != nil {
-		return "", nil, fmt.Errorf("couldn't read command ID: %w", err)
+		return nil, fmt.Errorf("couldn't read command ID: %w", err)
 	}
 
 	cmdID := header[0]
@@ -23,13 +24,12 @@ func Unmarshal(conn io.Reader) (string, interface{}, error) {
 		buf := make([]byte, 2)
 
 		if _, err := io.ReadFull(conn, buf); err != nil {
-			return "", nil, fmt.Errorf("couldn't read ProxyStatusRequest ProxyID: %w", err)
+			return nil, fmt.Errorf("couldn't read ProxyStatusRequest ProxyID: %w", err)
 		}
 
 		proxyID := binary.BigEndian.Uint16(buf)
 
-		return "proxyStatusRequest", &ProxyStatusRequest{
-			Type:    "proxyStatusRequest",
+		return &ProxyStatusRequest{
 			ProxyID: proxyID,
 		}, nil
 
@@ -38,20 +38,19 @@ func Unmarshal(conn io.Reader) (string, interface{}, error) {
 		buf := make([]byte, 2)
 
 		if _, err := io.ReadFull(conn, buf); err != nil {
-			return "", nil, fmt.Errorf("couldn't read ProxyStatusResponse ProxyID: %w", err)
+			return nil, fmt.Errorf("couldn't read ProxyStatusResponse ProxyID: %w", err)
 		}
 
 		proxyID := binary.BigEndian.Uint16(buf)
 		boolBuf := make([]byte, 1)
 
 		if _, err := io.ReadFull(conn, boolBuf); err != nil {
-			return "", nil, fmt.Errorf("couldn't read ProxyStatusResponse IsActive: %w", err)
+			return nil, fmt.Errorf("couldn't read ProxyStatusResponse IsActive: %w", err)
 		}
 
 		isActive := boolBuf[0] != 0
 
-		return "proxyStatusResponse", &ProxyStatusResponse{
-			Type:     "proxyStatusResponse",
+		return &ProxyStatusResponse{
 			ProxyID:  proxyID,
 			IsActive: isActive,
 		}, nil
@@ -61,13 +60,12 @@ func Unmarshal(conn io.Reader) (string, interface{}, error) {
 		buf := make([]byte, 2)
 
 		if _, err := io.ReadFull(conn, buf); err != nil {
-			return "", nil, fmt.Errorf("couldn't read RemoveProxy ProxyID: %w", err)
+			return nil, fmt.Errorf("couldn't read RemoveProxy ProxyID: %w", err)
 		}
 
 		proxyID := binary.BigEndian.Uint16(buf)
 
-		return "removeProxy", &RemoveProxy{
-			Type:    "removeProxy",
+		return &RemoveProxy{
 			ProxyID: proxyID,
 		}, nil
 
@@ -76,13 +74,12 @@ func Unmarshal(conn io.Reader) (string, interface{}, error) {
 		buf := make([]byte, 2)
 
 		if _, err := io.ReadFull(conn, buf); err != nil {
-			return "", nil, fmt.Errorf("couldn't read ProxyConnectionsRequest ProxyID: %w", err)
+			return nil, fmt.Errorf("couldn't read ProxyConnectionsRequest ProxyID: %w", err)
 		}
 
 		proxyID := binary.BigEndian.Uint16(buf)
 
-		return "proxyConnectionsRequest", &ProxyConnectionsRequest{
-			Type:    "proxyConnectionsRequest",
+		return &ProxyConnectionsRequest{
 			ProxyID: proxyID,
 		}, nil
 
@@ -91,7 +88,7 @@ func Unmarshal(conn io.Reader) (string, interface{}, error) {
 		buf := make([]byte, 2)
 
 		if _, err := io.ReadFull(conn, buf); err != nil {
-			return "", nil, fmt.Errorf("couldn't read ProxyConnectionsResponse length: %w", err)
+			return nil, fmt.Errorf("couldn't read ProxyConnectionsResponse length: %w", err)
 		}
 
 		length := binary.BigEndian.Uint16(buf)
@@ -108,8 +105,7 @@ func Unmarshal(conn io.Reader) (string, interface{}, error) {
 			connections[connectionIndex] = binary.BigEndian.Uint16(buf)
 		}
 
-		return "proxyConnectionsResponse", &ProxyConnectionsResponse{
-			Type:        "proxyConnectionsResponse",
+		return &ProxyConnectionsResponse{
 			Connections: connections,
 		}, failedDuringReading
 
@@ -118,7 +114,7 @@ func Unmarshal(conn io.Reader) (string, interface{}, error) {
 		buf := make([]byte, 2)
 
 		if _, err := io.ReadFull(conn, buf); err != nil {
-			return "", nil, fmt.Errorf("couldn't read ProxyConnectionsResponse length: %w", err)
+			return nil, fmt.Errorf("couldn't read ProxyConnectionsResponse length: %w", err)
 		}
 
 		length := binary.BigEndian.Uint16(buf)
@@ -135,8 +131,7 @@ func Unmarshal(conn io.Reader) (string, interface{}, error) {
 			proxies[connectionIndex] = binary.BigEndian.Uint16(buf)
 		}
 
-		return "proxyInstanceResponse", &ProxyInstanceResponse{
-			Type:    "proxyInstanceResponse",
+		return &ProxyInstanceResponse{
 			Proxies: proxies,
 		}, failedDuringReading
 
@@ -145,14 +140,13 @@ func Unmarshal(conn io.Reader) (string, interface{}, error) {
 		buf := make([]byte, 2+2)
 
 		if _, err := io.ReadFull(conn, buf); err != nil {
-			return "", nil, fmt.Errorf("couldn't read TCPConnectionOpened fields: %w", err)
+			return nil, fmt.Errorf("couldn't read TCPConnectionOpened fields: %w", err)
 		}
 
 		proxyID := binary.BigEndian.Uint16(buf[0:2])
 		connectionID := binary.BigEndian.Uint16(buf[2:4])
 
-		return "tcpConnectionOpened", &TCPConnectionOpened{
-			Type:         "tcpConnectionOpened",
+		return &TCPConnectionOpened{
 			ProxyID:      proxyID,
 			ConnectionID: connectionID,
 		}, nil
@@ -162,14 +156,13 @@ func Unmarshal(conn io.Reader) (string, interface{}, error) {
 		buf := make([]byte, 2+2)
 
 		if _, err := io.ReadFull(conn, buf); err != nil {
-			return "", nil, fmt.Errorf("couldn't read TCPConnectionClosed fields: %w", err)
+			return nil, fmt.Errorf("couldn't read TCPConnectionClosed fields: %w", err)
 		}
 
 		proxyID := binary.BigEndian.Uint16(buf[0:2])
 		connectionID := binary.BigEndian.Uint16(buf[2:4])
 
-		return "tcpConnectionClosed", &TCPConnectionClosed{
-			Type:         "tcpConnectionClosed",
+		return &TCPConnectionClosed{
 			ProxyID:      proxyID,
 			ConnectionID: connectionID,
 		}, nil
@@ -179,15 +172,14 @@ func Unmarshal(conn io.Reader) (string, interface{}, error) {
 		buf := make([]byte, 2+2+2)
 
 		if _, err := io.ReadFull(conn, buf); err != nil {
-			return "", nil, fmt.Errorf("couldn't read TCPProxyData fields: %w", err)
+			return nil, fmt.Errorf("couldn't read TCPProxyData fields: %w", err)
 		}
 
 		proxyID := binary.BigEndian.Uint16(buf[0:2])
 		connectionID := binary.BigEndian.Uint16(buf[2:4])
 		dataLength := binary.BigEndian.Uint16(buf[4:6])
 
-		return "tcpProxyData", &TCPProxyData{
-			Type:         "tcpProxyData",
+		return &TCPProxyData{
 			ProxyID:      proxyID,
 			ConnectionID: connectionID,
 			DataLength:   dataLength,
@@ -201,7 +193,7 @@ func Unmarshal(conn io.Reader) (string, interface{}, error) {
 		buf := make([]byte, 2)
 
 		if _, err := io.ReadFull(conn, buf); err != nil {
-			return "", nil, fmt.Errorf("couldn't read UDPProxyData ProxyID/ConnectionID: %w", err)
+			return nil, fmt.Errorf("couldn't read UDPProxyData ProxyID/ConnectionID: %w", err)
 		}
 
 		proxyID := binary.BigEndian.Uint16(buf)
@@ -210,7 +202,7 @@ func Unmarshal(conn io.Reader) (string, interface{}, error) {
 		ipVerBuf := make([]byte, 1)
 
 		if _, err := io.ReadFull(conn, ipVerBuf); err != nil {
-			return "", nil, fmt.Errorf("couldn't read UDPProxyData IP version: %w", err)
+			return nil, fmt.Errorf("couldn't read UDPProxyData IP version: %w", err)
 		}
 
 		var ipSize int
@@ -220,13 +212,13 @@ func Unmarshal(conn io.Reader) (string, interface{}, error) {
 		} else if ipVerBuf[0] == 6 {
 			ipSize = IPv6Size
 		} else {
-			return "", nil, fmt.Errorf("invalid IP version received: %v", ipVerBuf[0])
+			return nil, fmt.Errorf("invalid IP version received: %v", ipVerBuf[0])
 		}
 
 		// Read the IP bytes.
 		ipBytes := make([]byte, ipSize)
 		if _, err := io.ReadFull(conn, ipBytes); err != nil {
-			return "", nil, fmt.Errorf("couldn't read UDPProxyData IP bytes: %w", err)
+			return nil, fmt.Errorf("couldn't read UDPProxyData IP bytes: %w", err)
 		}
 		clientIP := net.IP(ipBytes).String()
 
@@ -234,7 +226,7 @@ func Unmarshal(conn io.Reader) (string, interface{}, error) {
 		portBuf := make([]byte, 2)
 
 		if _, err := io.ReadFull(conn, portBuf); err != nil {
-			return "", nil, fmt.Errorf("couldn't read UDPProxyData ClientPort: %w", err)
+			return nil, fmt.Errorf("couldn't read UDPProxyData ClientPort: %w", err)
 		}
 
 		clientPort := binary.BigEndian.Uint16(portBuf)
@@ -243,13 +235,12 @@ func Unmarshal(conn io.Reader) (string, interface{}, error) {
 		dataLengthBuf := make([]byte, 2)
 
 		if _, err := io.ReadFull(conn, dataLengthBuf); err != nil {
-			return "", nil, fmt.Errorf("couldn't read UDPProxyData DataLength: %w", err)
+			return nil, fmt.Errorf("couldn't read UDPProxyData DataLength: %w", err)
 		}
 
 		dataLength := binary.BigEndian.Uint16(dataLengthBuf)
 
-		return "udpProxyData", &UDPProxyData{
-			Type:       "udpProxyData",
+		return &UDPProxyData{
 			ProxyID:    proxyID,
 			ClientIP:   clientIP,
 			ClientPort: clientPort,
@@ -261,13 +252,12 @@ func Unmarshal(conn io.Reader) (string, interface{}, error) {
 		buf := make([]byte, 2)
 
 		if _, err := io.ReadFull(conn, buf); err != nil {
-			return "", nil, fmt.Errorf("couldn't read ProxyInformationRequest ProxyID: %w", err)
+			return nil, fmt.Errorf("couldn't read ProxyInformationRequest ProxyID: %w", err)
 		}
 
 		proxyID := binary.BigEndian.Uint16(buf)
 
-		return "proxyInformationRequest", &ProxyInformationRequest{
-			Type:    "proxyInformationRequest",
+		return &ProxyInformationRequest{
 			ProxyID: proxyID,
 		}, nil
 
@@ -279,14 +269,13 @@ func Unmarshal(conn io.Reader) (string, interface{}, error) {
 		boolBuf := make([]byte, 1)
 
 		if _, err := io.ReadFull(conn, boolBuf); err != nil {
-			return "", nil, fmt.Errorf("couldn't read ProxyInformationResponse Exists flag: %w", err)
+			return nil, fmt.Errorf("couldn't read ProxyInformationResponse Exists flag: %w", err)
 		}
 
 		exists := boolBuf[0] != 0
 
 		if !exists {
-			return "proxyInformationResponse", &ProxyInformationResponse{
-				Type:   "proxyInformationResponse",
+			return &ProxyInformationResponse{
 				Exists: exists,
 			}, nil
 		}
@@ -295,7 +284,7 @@ func Unmarshal(conn io.Reader) (string, interface{}, error) {
 		ipVerBuf := make([]byte, 1)
 
 		if _, err := io.ReadFull(conn, ipVerBuf); err != nil {
-			return "", nil, fmt.Errorf("couldn't read ProxyInformationResponse IP version: %w", err)
+			return nil, fmt.Errorf("couldn't read ProxyInformationResponse IP version: %w", err)
 		}
 
 		var ipSize int
@@ -305,14 +294,14 @@ func Unmarshal(conn io.Reader) (string, interface{}, error) {
 		} else if ipVerBuf[0] == 6 {
 			ipSize = IPv6Size
 		} else {
-			return "", nil, fmt.Errorf("invalid IP version in ProxyInformationResponse: %v", ipVerBuf[0])
+			return nil, fmt.Errorf("invalid IP version in ProxyInformationResponse: %v", ipVerBuf[0])
 		}
 
 		// Read the source IP bytes.
 		ipBytes := make([]byte, ipSize)
 
 		if _, err := io.ReadFull(conn, ipBytes); err != nil {
-			return "", nil, fmt.Errorf("couldn't read ProxyInformationResponse IP bytes: %w", err)
+			return nil, fmt.Errorf("couldn't read ProxyInformationResponse IP bytes: %w", err)
 		}
 
 		sourceIP := net.IP(ipBytes).String()
@@ -321,7 +310,7 @@ func Unmarshal(conn io.Reader) (string, interface{}, error) {
 		portsBuf := make([]byte, 2+2)
 
 		if _, err := io.ReadFull(conn, portsBuf); err != nil {
-			return "", nil, fmt.Errorf("couldn't read ProxyInformationResponse ports: %w", err)
+			return nil, fmt.Errorf("couldn't read ProxyInformationResponse ports: %w", err)
 		}
 
 		sourcePort := binary.BigEndian.Uint16(portsBuf[0:2])
@@ -331,19 +320,20 @@ func Unmarshal(conn io.Reader) (string, interface{}, error) {
 		protoBuf := make([]byte, 1)
 
 		if _, err := io.ReadFull(conn, protoBuf); err != nil {
-			return "", nil, fmt.Errorf("couldn't read ProxyInformationResponse protocol: %w", err)
+			return nil, fmt.Errorf("couldn't read ProxyInformationResponse protocol: %w", err)
 		}
+
 		var protocol string
+
 		if protoBuf[0] == TCP {
 			protocol = "tcp"
 		} else if protoBuf[0] == UDP {
 			protocol = "udp"
 		} else {
-			return "", nil, fmt.Errorf("invalid protocol value in ProxyInformationResponse: %d", protoBuf[0])
+			return nil, fmt.Errorf("invalid protocol value in ProxyInformationResponse: %d", protoBuf[0])
 		}
 
-		return "proxyInformationResponse", &ProxyInformationResponse{
-			Type:       "proxyInformationResponse",
+		return &ProxyInformationResponse{
 			Exists:     exists,
 			SourceIP:   sourceIP,
 			SourcePort: sourcePort,
@@ -356,14 +346,13 @@ func Unmarshal(conn io.Reader) (string, interface{}, error) {
 		buf := make([]byte, 2+2)
 
 		if _, err := io.ReadFull(conn, buf); err != nil {
-			return "", nil, fmt.Errorf("couldn't read ProxyConnectionInformationRequest fields: %w", err)
+			return nil, fmt.Errorf("couldn't read ProxyConnectionInformationRequest fields: %w", err)
 		}
 
 		proxyID := binary.BigEndian.Uint16(buf[0:2])
 		connectionID := binary.BigEndian.Uint16(buf[2:4])
 
-		return "proxyConnectionInformationRequest", &ProxyConnectionInformationRequest{
-			Type:         "proxyConnectionInformationRequest",
+		return &ProxyConnectionInformationRequest{
 			ProxyID:      proxyID,
 			ConnectionID: connectionID,
 		}, nil
@@ -374,14 +363,13 @@ func Unmarshal(conn io.Reader) (string, interface{}, error) {
 		// Read Exists flag.
 		boolBuf := make([]byte, 1)
 		if _, err := io.ReadFull(conn, boolBuf); err != nil {
-			return "", nil, fmt.Errorf("couldn't read ProxyConnectionInformationResponse Exists flag: %w", err)
+			return nil, fmt.Errorf("couldn't read ProxyConnectionInformationResponse Exists flag: %w", err)
 		}
 
 		exists := boolBuf[0] != 0
 
 		if !exists {
-			return "proxyConnectionInformationResponse", &ProxyConnectionInformationResponse{
-				Type:   "proxyConnectionInformationResponse",
+			return &ProxyConnectionInformationResponse{
 				Exists: exists,
 			}, nil
 		}
@@ -390,11 +378,11 @@ func Unmarshal(conn io.Reader) (string, interface{}, error) {
 		ipVerBuf := make([]byte, 1)
 
 		if _, err := io.ReadFull(conn, ipVerBuf); err != nil {
-			return "", nil, fmt.Errorf("couldn't read ProxyConnectionInformationResponse IP version: %w", err)
+			return nil, fmt.Errorf("couldn't read ProxyConnectionInformationResponse IP version: %w", err)
 		}
 
 		if ipVerBuf[0] != 4 && ipVerBuf[0] != 6 {
-			return "", nil, fmt.Errorf("invalid IP version in ProxyConnectionInformationResponse: %v", ipVerBuf[0])
+			return nil, fmt.Errorf("invalid IP version in ProxyConnectionInformationResponse: %v", ipVerBuf[0])
 		}
 
 		var ipSize int
@@ -409,7 +397,7 @@ func Unmarshal(conn io.Reader) (string, interface{}, error) {
 		ipBytes := make([]byte, ipSize)
 
 		if _, err := io.ReadFull(conn, ipBytes); err != nil {
-			return "", nil, fmt.Errorf("couldn't read ProxyConnectionInformationResponse IP bytes: %w", err)
+			return nil, fmt.Errorf("couldn't read ProxyConnectionInformationResponse IP bytes: %w", err)
 		}
 
 		clientIP := net.IP(ipBytes).String()
@@ -418,18 +406,17 @@ func Unmarshal(conn io.Reader) (string, interface{}, error) {
 		portBuf := make([]byte, 2)
 
 		if _, err := io.ReadFull(conn, portBuf); err != nil {
-			return "", nil, fmt.Errorf("couldn't read ProxyConnectionInformationResponse ClientPort: %w", err)
+			return nil, fmt.Errorf("couldn't read ProxyConnectionInformationResponse ClientPort: %w", err)
 		}
 
 		clientPort := binary.BigEndian.Uint16(portBuf)
 
-		return "proxyConnectionInformationResponse", &ProxyConnectionInformationResponse{
-			Type:       "proxyConnectionInformationResponse",
+		return &ProxyConnectionInformationResponse{
 			Exists:     exists,
 			ClientIP:   clientIP,
 			ClientPort: clientPort,
 		}, nil
 	default:
-		return "", nil, fmt.Errorf("unknown command id: %v", cmdID)
+		return nil, fmt.Errorf("unknown command id: %v", cmdID)
 	}
 }

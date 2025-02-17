@@ -112,11 +112,10 @@ func entrypoint(cCtx *cli.Context) error {
 			defer sock.Close()
 
 			startCommand := &commonbackend.Start{
-				Type:      "start",
 				Arguments: backendParameters,
 			}
 
-			startMarshalledCommand, err := commonbackend.Marshal("start", startCommand)
+			startMarshalledCommand, err := commonbackend.Marshal(startCommand)
 
 			if err != nil {
 				log.Errorf("failed to generate start command: %s", err.Error())
@@ -128,15 +127,10 @@ func entrypoint(cCtx *cli.Context) error {
 				continue
 			}
 
-			commandType, commandRaw, err := commonbackend.Unmarshal(sock)
+			commandRaw, err := commonbackend.Unmarshal(sock)
 
 			if err != nil {
 				log.Errorf("failed to read from/unmarshal from socket: %s", err.Error())
-				continue
-			}
-
-			if commandType != "backendStatusResponse" {
-				log.Errorf("recieved commandType '%s', expecting 'backendStatusResponse'", commandType)
 				continue
 			}
 
@@ -168,14 +162,13 @@ func entrypoint(cCtx *cli.Context) error {
 				log.Infof("initializing proxy %s:%d -> remote:%d", proxy.SourceIP, proxy.SourcePort, proxy.DestPort)
 
 				proxyAddCommand := &commonbackend.AddProxy{
-					Type:       "addProxy",
 					SourceIP:   proxy.SourceIP,
 					SourcePort: proxy.SourcePort,
 					DestPort:   proxy.DestPort,
 					Protocol:   proxy.Protocol,
 				}
 
-				marshalledProxyCommand, err := commonbackend.Marshal("addProxy", proxyAddCommand)
+				marshalledProxyCommand, err := commonbackend.Marshal(proxyAddCommand)
 
 				if err != nil {
 					log.Errorf("failed to generate start command: %s", err.Error())
@@ -189,16 +182,10 @@ func entrypoint(cCtx *cli.Context) error {
 					continue
 				}
 
-				commandType, commandRaw, err := commonbackend.Unmarshal(sock)
+				commandRaw, err := commonbackend.Unmarshal(sock)
 
 				if err != nil {
 					log.Errorf("failed to read from/unmarshal from socket: %s", err.Error())
-					hasAnyFailed = true
-					continue
-				}
-
-				if commandType != "proxyStatusResponse" {
-					log.Errorf("recieved commandType '%s', expecting 'proxyStatusResponse'", commandType)
 					hasAnyFailed = true
 					continue
 				}

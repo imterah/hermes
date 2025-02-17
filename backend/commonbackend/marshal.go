@@ -84,7 +84,7 @@ func marshalIndividualProxyStruct(conn *ProxyInstance) ([]byte, error) {
 	return proxyBlock, nil
 }
 
-func Marshal(_ string, command interface{}) ([]byte, error) {
+func Marshal(command interface{}) ([]byte, error) {
 	switch command := command.(type) {
 	case *Start:
 		startCommandBytes := make([]byte, 1+2+len(command.Arguments))

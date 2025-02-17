@@ -118,9 +118,7 @@ func GetConnections(c *gin.Context) {
 		return
 	}
 
-	backendResponse, err := backendRuntime.ProcessCommand(&commonbackend.ProxyConnectionsRequest{
-		Type: "proxyConnectionsRequest",
-	})
+	backendResponse, err := backendRuntime.ProcessCommand(&commonbackend.ProxyConnectionsRequest{})
 
 	if err != nil {
 		log.Warnf("Failed to get response for backend: %s", err.Error())

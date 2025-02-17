@@ -11,11 +11,10 @@ var logLevel = os.Getenv("HERMES_LOG_LEVEL")
 
 func TestProxyStatusRequest(t *testing.T) {
 	commandInput := &ProxyStatusRequest{
-		Type:    "proxyStatusRequest",
 		ProxyID: 19132,
 	}
 
-	commandMarshalled, err := Marshal(commandInput.Type, commandInput)
+	commandMarshalled, err := Marshal(commandInput)
 
 	if logLevel == "debug" {
 		log.Printf("Generated array contents: %v", commandMarshalled)
@@ -26,26 +25,16 @@ func TestProxyStatusRequest(t *testing.T) {
 	}
 
 	buf := bytes.NewBuffer(commandMarshalled)
-	commandType, commandUnmarshalledRaw, err := Unmarshal(buf)
+	commandUnmarshalledRaw, err := Unmarshal(buf)
 
 	if err != nil {
 		t.Fatal(err.Error())
-	}
-
-	if commandType != commandInput.Type {
-		t.Fail()
-		log.Print("command type does not match up!")
 	}
 
 	commandUnmarshalled, ok := commandUnmarshalledRaw.(*ProxyStatusRequest)
 
 	if !ok {
 		t.Fatal("failed typecast")
-	}
-
-	if commandInput.Type != commandUnmarshalled.Type {
-		t.Fail()
-		log.Printf("Types are not equal (orig: %s, unmsh: %s)", commandInput.Type, commandUnmarshalled.Type)
 	}
 
 	if commandInput.ProxyID != commandUnmarshalled.ProxyID {
@@ -56,12 +45,11 @@ func TestProxyStatusRequest(t *testing.T) {
 
 func TestProxyStatusResponse(t *testing.T) {
 	commandInput := &ProxyStatusResponse{
-		Type:     "proxyStatusResponse",
 		ProxyID:  19132,
 		IsActive: true,
 	}
 
-	commandMarshalled, err := Marshal(commandInput.Type, commandInput)
+	commandMarshalled, err := Marshal(commandInput)
 
 	if logLevel == "debug" {
 		log.Printf("Generated array contents: %v", commandMarshalled)
@@ -72,26 +60,16 @@ func TestProxyStatusResponse(t *testing.T) {
 	}
 
 	buf := bytes.NewBuffer(commandMarshalled)
-	commandType, commandUnmarshalledRaw, err := Unmarshal(buf)
+	commandUnmarshalledRaw, err := Unmarshal(buf)
 
 	if err != nil {
 		t.Fatal(err.Error())
-	}
-
-	if commandType != commandInput.Type {
-		t.Fail()
-		log.Print("command type does not match up!")
 	}
 
 	commandUnmarshalled, ok := commandUnmarshalledRaw.(*ProxyStatusResponse)
 
 	if !ok {
 		t.Fatal("failed typecast")
-	}
-
-	if commandInput.Type != commandUnmarshalled.Type {
-		t.Fail()
-		log.Printf("Types are not equal (orig: %s, unmsh: %s)", commandInput.Type, commandUnmarshalled.Type)
 	}
 
 	if commandInput.ProxyID != commandUnmarshalled.ProxyID {
@@ -107,11 +85,10 @@ func TestProxyStatusResponse(t *testing.T) {
 
 func TestRemoveProxy(t *testing.T) {
 	commandInput := &RemoveProxy{
-		Type:    "removeProxy",
 		ProxyID: 19132,
 	}
 
-	commandMarshalled, err := Marshal(commandInput.Type, commandInput)
+	commandMarshalled, err := Marshal(commandInput)
 
 	if logLevel == "debug" {
 		log.Printf("Generated array contents: %v", commandMarshalled)
@@ -122,26 +99,16 @@ func TestRemoveProxy(t *testing.T) {
 	}
 
 	buf := bytes.NewBuffer(commandMarshalled)
-	commandType, commandUnmarshalledRaw, err := Unmarshal(buf)
+	commandUnmarshalledRaw, err := Unmarshal(buf)
 
 	if err != nil {
 		t.Fatal(err.Error())
-	}
-
-	if commandType != commandInput.Type {
-		t.Fail()
-		log.Print("command type does not match up!")
 	}
 
 	commandUnmarshalled, ok := commandUnmarshalledRaw.(*RemoveProxy)
 
 	if !ok {
 		t.Fatal("failed typecast")
-	}
-
-	if commandInput.Type != commandUnmarshalled.Type {
-		t.Fail()
-		log.Printf("Types are not equal (orig: %s, unmsh: %s)", commandInput.Type, commandUnmarshalled.Type)
 	}
 
 	if commandInput.ProxyID != commandUnmarshalled.ProxyID {
@@ -152,11 +119,10 @@ func TestRemoveProxy(t *testing.T) {
 
 func TestProxyConnectionsRequest(t *testing.T) {
 	commandInput := &ProxyConnectionsRequest{
-		Type:    "proxyConnectionsRequest",
 		ProxyID: 19132,
 	}
 
-	commandMarshalled, err := Marshal(commandInput.Type, commandInput)
+	commandMarshalled, err := Marshal(commandInput)
 
 	if logLevel == "debug" {
 		log.Printf("Generated array contents: %v", commandMarshalled)
@@ -167,26 +133,16 @@ func TestProxyConnectionsRequest(t *testing.T) {
 	}
 
 	buf := bytes.NewBuffer(commandMarshalled)
-	commandType, commandUnmarshalledRaw, err := Unmarshal(buf)
+	commandUnmarshalledRaw, err := Unmarshal(buf)
 
 	if err != nil {
 		t.Fatal(err.Error())
-	}
-
-	if commandType != commandInput.Type {
-		t.Fail()
-		log.Print("command type does not match up!")
 	}
 
 	commandUnmarshalled, ok := commandUnmarshalledRaw.(*ProxyConnectionsRequest)
 
 	if !ok {
 		t.Fatal("failed typecast")
-	}
-
-	if commandInput.Type != commandUnmarshalled.Type {
-		t.Fail()
-		log.Printf("Types are not equal (orig: %s, unmsh: %s)", commandInput.Type, commandUnmarshalled.Type)
 	}
 
 	if commandInput.ProxyID != commandUnmarshalled.ProxyID {
@@ -197,11 +153,10 @@ func TestProxyConnectionsRequest(t *testing.T) {
 
 func TestProxyConnectionsResponse(t *testing.T) {
 	commandInput := &ProxyConnectionsResponse{
-		Type:        "proxyConnectionsResponse",
 		Connections: []uint16{12831, 9455, 64219, 12, 32},
 	}
 
-	commandMarshalled, err := Marshal(commandInput.Type, commandInput)
+	commandMarshalled, err := Marshal(commandInput)
 
 	if logLevel == "debug" {
 		log.Printf("Generated array contents: %v", commandMarshalled)
@@ -212,26 +167,16 @@ func TestProxyConnectionsResponse(t *testing.T) {
 	}
 
 	buf := bytes.NewBuffer(commandMarshalled)
-	commandType, commandUnmarshalledRaw, err := Unmarshal(buf)
+	commandUnmarshalledRaw, err := Unmarshal(buf)
 
 	if err != nil {
 		t.Fatal(err.Error())
-	}
-
-	if commandType != commandInput.Type {
-		t.Fail()
-		log.Print("command type does not match up!")
 	}
 
 	commandUnmarshalled, ok := commandUnmarshalledRaw.(*ProxyConnectionsResponse)
 
 	if !ok {
 		t.Fatal("failed typecast")
-	}
-
-	if commandInput.Type != commandUnmarshalled.Type {
-		t.Fail()
-		log.Printf("Types are not equal (orig: %s, unmsh: %s)", commandInput.Type, commandUnmarshalled.Type)
 	}
 
 	for connectionIndex, originalConnection := range commandInput.Connections {
@@ -246,11 +191,10 @@ func TestProxyConnectionsResponse(t *testing.T) {
 
 func TestProxyInstanceResponse(t *testing.T) {
 	commandInput := &ProxyInstanceResponse{
-		Type:    "proxyInstanceResponse",
 		Proxies: []uint16{12831, 9455, 64219, 12, 32},
 	}
 
-	commandMarshalled, err := Marshal(commandInput.Type, commandInput)
+	commandMarshalled, err := Marshal(commandInput)
 
 	if logLevel == "debug" {
 		log.Printf("Generated array contents: %v", commandMarshalled)
@@ -261,26 +205,16 @@ func TestProxyInstanceResponse(t *testing.T) {
 	}
 
 	buf := bytes.NewBuffer(commandMarshalled)
-	commandType, commandUnmarshalledRaw, err := Unmarshal(buf)
+	commandUnmarshalledRaw, err := Unmarshal(buf)
 
 	if err != nil {
 		t.Fatal(err.Error())
-	}
-
-	if commandType != commandInput.Type {
-		t.Fail()
-		log.Print("command type does not match up!")
 	}
 
 	commandUnmarshalled, ok := commandUnmarshalledRaw.(*ProxyInstanceResponse)
 
 	if !ok {
 		t.Fatal("failed typecast")
-	}
-
-	if commandInput.Type != commandUnmarshalled.Type {
-		t.Fail()
-		log.Printf("Types are not equal (orig: %s, unmsh: %s)", commandInput.Type, commandUnmarshalled.Type)
 	}
 
 	for proxyIndex, originalProxy := range commandInput.Proxies {
@@ -295,12 +229,11 @@ func TestProxyInstanceResponse(t *testing.T) {
 
 func TestTCPConnectionOpened(t *testing.T) {
 	commandInput := &TCPConnectionOpened{
-		Type:         "tcpConnectionOpened",
 		ProxyID:      19132,
 		ConnectionID: 25565,
 	}
 
-	commandMarshalled, err := Marshal(commandInput.Type, commandInput)
+	commandMarshalled, err := Marshal(commandInput)
 
 	if logLevel == "debug" {
 		log.Printf("Generated array contents: %v", commandMarshalled)
@@ -311,26 +244,16 @@ func TestTCPConnectionOpened(t *testing.T) {
 	}
 
 	buf := bytes.NewBuffer(commandMarshalled)
-	commandType, commandUnmarshalledRaw, err := Unmarshal(buf)
+	commandUnmarshalledRaw, err := Unmarshal(buf)
 
 	if err != nil {
 		t.Fatal(err.Error())
-	}
-
-	if commandType != commandInput.Type {
-		t.Fail()
-		log.Print("command type does not match up!")
 	}
 
 	commandUnmarshalled, ok := commandUnmarshalledRaw.(*TCPConnectionOpened)
 
 	if !ok {
 		t.Fatal("failed typecast")
-	}
-
-	if commandInput.Type != commandUnmarshalled.Type {
-		t.Fail()
-		log.Printf("Types are not equal (orig: %s, unmsh: %s)", commandInput.Type, commandUnmarshalled.Type)
 	}
 
 	if commandInput.ProxyID != commandUnmarshalled.ProxyID {
@@ -346,12 +269,11 @@ func TestTCPConnectionOpened(t *testing.T) {
 
 func TestTCPConnectionClosed(t *testing.T) {
 	commandInput := &TCPConnectionClosed{
-		Type:         "tcpConnectionClosed",
 		ProxyID:      19132,
 		ConnectionID: 25565,
 	}
 
-	commandMarshalled, err := Marshal(commandInput.Type, commandInput)
+	commandMarshalled, err := Marshal(commandInput)
 
 	if logLevel == "debug" {
 		log.Printf("Generated array contents: %v", commandMarshalled)
@@ -362,26 +284,16 @@ func TestTCPConnectionClosed(t *testing.T) {
 	}
 
 	buf := bytes.NewBuffer(commandMarshalled)
-	commandType, commandUnmarshalledRaw, err := Unmarshal(buf)
+	commandUnmarshalledRaw, err := Unmarshal(buf)
 
 	if err != nil {
 		t.Fatal(err.Error())
-	}
-
-	if commandType != commandInput.Type {
-		t.Fail()
-		log.Print("command type does not match up!")
 	}
 
 	commandUnmarshalled, ok := commandUnmarshalledRaw.(*TCPConnectionClosed)
 
 	if !ok {
 		t.Fatal("failed typecast")
-	}
-
-	if commandInput.Type != commandUnmarshalled.Type {
-		t.Fail()
-		log.Printf("Types are not equal (orig: %s, unmsh: %s)", commandInput.Type, commandUnmarshalled.Type)
 	}
 
 	if commandInput.ProxyID != commandUnmarshalled.ProxyID {
@@ -397,13 +309,12 @@ func TestTCPConnectionClosed(t *testing.T) {
 
 func TestTCPProxyData(t *testing.T) {
 	commandInput := &TCPProxyData{
-		Type:         "tcpProxyData",
 		ProxyID:      19132,
 		ConnectionID: 25565,
 		DataLength:   1234,
 	}
 
-	commandMarshalled, err := Marshal(commandInput.Type, commandInput)
+	commandMarshalled, err := Marshal(commandInput)
 
 	if logLevel == "debug" {
 		log.Printf("Generated array contents: %v", commandMarshalled)
@@ -414,26 +325,16 @@ func TestTCPProxyData(t *testing.T) {
 	}
 
 	buf := bytes.NewBuffer(commandMarshalled)
-	commandType, commandUnmarshalledRaw, err := Unmarshal(buf)
+	commandUnmarshalledRaw, err := Unmarshal(buf)
 
 	if err != nil {
 		t.Fatal(err.Error())
-	}
-
-	if commandType != commandInput.Type {
-		t.Fail()
-		log.Print("command type does not match up!")
 	}
 
 	commandUnmarshalled, ok := commandUnmarshalledRaw.(*TCPProxyData)
 
 	if !ok {
 		t.Fatal("failed typecast")
-	}
-
-	if commandInput.Type != commandUnmarshalled.Type {
-		t.Fail()
-		log.Printf("Types are not equal (orig: %s, unmsh: %s)", commandInput.Type, commandUnmarshalled.Type)
 	}
 
 	if commandInput.ProxyID != commandUnmarshalled.ProxyID {
@@ -454,14 +355,13 @@ func TestTCPProxyData(t *testing.T) {
 
 func TestUDPProxyData(t *testing.T) {
 	commandInput := &UDPProxyData{
-		Type:       "udpProxyData",
 		ProxyID:    19132,
 		ClientIP:   "68.51.23.54",
 		ClientPort: 28173,
 		DataLength: 1234,
 	}
 
-	commandMarshalled, err := Marshal(commandInput.Type, commandInput)
+	commandMarshalled, err := Marshal(commandInput)
 
 	if logLevel == "debug" {
 		log.Printf("Generated array contents: %v", commandMarshalled)
@@ -472,26 +372,16 @@ func TestUDPProxyData(t *testing.T) {
 	}
 
 	buf := bytes.NewBuffer(commandMarshalled)
-	commandType, commandUnmarshalledRaw, err := Unmarshal(buf)
+	commandUnmarshalledRaw, err := Unmarshal(buf)
 
 	if err != nil {
 		t.Fatal(err.Error())
-	}
-
-	if commandType != commandInput.Type {
-		t.Fail()
-		log.Print("command type does not match up!")
 	}
 
 	commandUnmarshalled, ok := commandUnmarshalledRaw.(*UDPProxyData)
 
 	if !ok {
 		t.Fatal("failed typecast")
-	}
-
-	if commandInput.Type != commandUnmarshalled.Type {
-		t.Fail()
-		log.Printf("Types are not equal (orig: %s, unmsh: %s)", commandInput.Type, commandUnmarshalled.Type)
 	}
 
 	if commandInput.ProxyID != commandUnmarshalled.ProxyID {
@@ -517,11 +407,10 @@ func TestUDPProxyData(t *testing.T) {
 
 func TestProxyInformationRequest(t *testing.T) {
 	commandInput := &ProxyInformationRequest{
-		Type:    "proxyInformationRequest",
 		ProxyID: 19132,
 	}
 
-	commandMarshalled, err := Marshal(commandInput.Type, commandInput)
+	commandMarshalled, err := Marshal(commandInput)
 
 	if logLevel == "debug" {
 		log.Printf("Generated array contents: %v", commandMarshalled)
@@ -532,26 +421,16 @@ func TestProxyInformationRequest(t *testing.T) {
 	}
 
 	buf := bytes.NewBuffer(commandMarshalled)
-	commandType, commandUnmarshalledRaw, err := Unmarshal(buf)
+	commandUnmarshalledRaw, err := Unmarshal(buf)
 
 	if err != nil {
 		t.Fatal(err.Error())
-	}
-
-	if commandType != commandInput.Type {
-		t.Fail()
-		log.Print("command type does not match up!")
 	}
 
 	commandUnmarshalled, ok := commandUnmarshalledRaw.(*ProxyInformationRequest)
 
 	if !ok {
 		t.Fatal("failed typecast")
-	}
-
-	if commandInput.Type != commandUnmarshalled.Type {
-		t.Fail()
-		log.Printf("Types are not equal (orig: %s, unmsh: %s)", commandInput.Type, commandUnmarshalled.Type)
 	}
 
 	if commandInput.ProxyID != commandUnmarshalled.ProxyID {
@@ -562,7 +441,6 @@ func TestProxyInformationRequest(t *testing.T) {
 
 func TestProxyInformationResponseExists(t *testing.T) {
 	commandInput := &ProxyInformationResponse{
-		Type:       "proxyInformationResponse",
 		Exists:     true,
 		SourceIP:   "192.168.0.139",
 		SourcePort: 19132,
@@ -570,7 +448,7 @@ func TestProxyInformationResponseExists(t *testing.T) {
 		Protocol:   "tcp",
 	}
 
-	commandMarshalled, err := Marshal(commandInput.Type, commandInput)
+	commandMarshalled, err := Marshal(commandInput)
 
 	if err != nil {
 		t.Fatal(err.Error())
@@ -581,26 +459,16 @@ func TestProxyInformationResponseExists(t *testing.T) {
 	}
 
 	buf := bytes.NewBuffer(commandMarshalled)
-	commandType, commandUnmarshalledRaw, err := Unmarshal(buf)
+	commandUnmarshalledRaw, err := Unmarshal(buf)
 
 	if err != nil {
 		t.Fatal(err.Error())
-	}
-
-	if commandType != commandInput.Type {
-		t.Fail()
-		log.Print("command type does not match up!")
 	}
 
 	commandUnmarshalled, ok := commandUnmarshalledRaw.(*ProxyInformationResponse)
 
 	if !ok {
 		t.Fatal("failed typecast")
-	}
-
-	if commandInput.Type != commandUnmarshalled.Type {
-		t.Fail()
-		log.Printf("Types are not equal (orig: %s, unmsh: %s)", commandInput.Type, commandUnmarshalled.Type)
 	}
 
 	if commandInput.Exists != commandUnmarshalled.Exists {
@@ -631,11 +499,10 @@ func TestProxyInformationResponseExists(t *testing.T) {
 
 func TestProxyInformationResponseNoExist(t *testing.T) {
 	commandInput := &ProxyInformationResponse{
-		Type:   "proxyInformationResponse",
 		Exists: false,
 	}
 
-	commandMarshalled, err := Marshal(commandInput.Type, commandInput)
+	commandMarshalled, err := Marshal(commandInput)
 
 	if err != nil {
 		t.Fatal(err.Error())
@@ -646,26 +513,16 @@ func TestProxyInformationResponseNoExist(t *testing.T) {
 	}
 
 	buf := bytes.NewBuffer(commandMarshalled)
-	commandType, commandUnmarshalledRaw, err := Unmarshal(buf)
+	commandUnmarshalledRaw, err := Unmarshal(buf)
 
 	if err != nil {
 		t.Fatal(err.Error())
-	}
-
-	if commandType != commandInput.Type {
-		t.Fail()
-		log.Print("command type does not match up!")
 	}
 
 	commandUnmarshalled, ok := commandUnmarshalledRaw.(*ProxyInformationResponse)
 
 	if !ok {
 		t.Fatal("failed typecast")
-	}
-
-	if commandInput.Type != commandUnmarshalled.Type {
-		t.Fail()
-		log.Printf("Types are not equal (orig: %s, unmsh: %s)", commandInput.Type, commandUnmarshalled.Type)
 	}
 
 	if commandInput.Exists != commandUnmarshalled.Exists {
@@ -676,12 +533,11 @@ func TestProxyInformationResponseNoExist(t *testing.T) {
 
 func TestProxyConnectionInformationRequest(t *testing.T) {
 	commandInput := &ProxyConnectionInformationRequest{
-		Type:         "proxyConnectionInformationRequest",
 		ProxyID:      19132,
 		ConnectionID: 25565,
 	}
 
-	commandMarshalled, err := Marshal(commandInput.Type, commandInput)
+	commandMarshalled, err := Marshal(commandInput)
 
 	if logLevel == "debug" {
 		log.Printf("Generated array contents: %v", commandMarshalled)
@@ -692,26 +548,16 @@ func TestProxyConnectionInformationRequest(t *testing.T) {
 	}
 
 	buf := bytes.NewBuffer(commandMarshalled)
-	commandType, commandUnmarshalledRaw, err := Unmarshal(buf)
+	commandUnmarshalledRaw, err := Unmarshal(buf)
 
 	if err != nil {
 		t.Fatal(err.Error())
-	}
-
-	if commandType != commandInput.Type {
-		t.Fail()
-		log.Print("command type does not match up!")
 	}
 
 	commandUnmarshalled, ok := commandUnmarshalledRaw.(*ProxyConnectionInformationRequest)
 
 	if !ok {
 		t.Fatal("failed typecast")
-	}
-
-	if commandInput.Type != commandUnmarshalled.Type {
-		t.Fail()
-		log.Printf("Types are not equal (orig: %s, unmsh: %s)", commandInput.Type, commandUnmarshalled.Type)
 	}
 
 	if commandInput.ProxyID != commandUnmarshalled.ProxyID {
@@ -727,13 +573,12 @@ func TestProxyConnectionInformationRequest(t *testing.T) {
 
 func TestProxyConnectionInformationResponseExists(t *testing.T) {
 	commandInput := &ProxyConnectionInformationResponse{
-		Type:       "proxyConnectionInformationResponse",
 		Exists:     true,
 		ClientIP:   "192.168.0.139",
 		ClientPort: 19132,
 	}
 
-	commandMarshalled, err := Marshal(commandInput.Type, commandInput)
+	commandMarshalled, err := Marshal(commandInput)
 
 	if err != nil {
 		t.Fatal(err.Error())
@@ -744,26 +589,16 @@ func TestProxyConnectionInformationResponseExists(t *testing.T) {
 	}
 
 	buf := bytes.NewBuffer(commandMarshalled)
-	commandType, commandUnmarshalledRaw, err := Unmarshal(buf)
+	commandUnmarshalledRaw, err := Unmarshal(buf)
 
 	if err != nil {
 		t.Fatal(err.Error())
-	}
-
-	if commandType != commandInput.Type {
-		t.Fail()
-		log.Print("command type does not match up!")
 	}
 
 	commandUnmarshalled, ok := commandUnmarshalledRaw.(*ProxyConnectionInformationResponse)
 
 	if !ok {
 		t.Fatal("failed typecast")
-	}
-
-	if commandInput.Type != commandUnmarshalled.Type {
-		t.Fail()
-		log.Printf("Types are not equal (orig: %s, unmsh: %s)", commandInput.Type, commandUnmarshalled.Type)
 	}
 
 	if commandInput.Exists != commandUnmarshalled.Exists {
@@ -784,11 +619,10 @@ func TestProxyConnectionInformationResponseExists(t *testing.T) {
 
 func TestProxyConnectionInformationResponseNoExists(t *testing.T) {
 	commandInput := &ProxyConnectionInformationResponse{
-		Type:   "proxyConnectionInformationResponse",
 		Exists: false,
 	}
 
-	commandMarshalled, err := Marshal(commandInput.Type, commandInput)
+	commandMarshalled, err := Marshal(commandInput)
 
 	if err != nil {
 		t.Fatal(err.Error())
@@ -799,26 +633,16 @@ func TestProxyConnectionInformationResponseNoExists(t *testing.T) {
 	}
 
 	buf := bytes.NewBuffer(commandMarshalled)
-	commandType, commandUnmarshalledRaw, err := Unmarshal(buf)
+	commandUnmarshalledRaw, err := Unmarshal(buf)
 
 	if err != nil {
 		t.Fatal(err.Error())
-	}
-
-	if commandType != commandInput.Type {
-		t.Fail()
-		log.Print("command type does not match up!")
 	}
 
 	commandUnmarshalled, ok := commandUnmarshalledRaw.(*ProxyConnectionInformationResponse)
 
 	if !ok {
 		t.Fatal("failed typecast")
-	}
-
-	if commandInput.Type != commandUnmarshalled.Type {
-		t.Fail()
-		log.Printf("Types are not equal (orig: %s, unmsh: %s)", commandInput.Type, commandUnmarshalled.Type)
 	}
 
 	if commandInput.Exists != commandUnmarshalled.Exists {
