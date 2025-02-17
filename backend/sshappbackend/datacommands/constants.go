@@ -1,5 +1,6 @@
 package datacommands
 
+// DO NOT USE
 type ProxyStatusRequest struct {
 	ProxyID uint16
 }

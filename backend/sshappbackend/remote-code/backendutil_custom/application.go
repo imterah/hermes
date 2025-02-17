@@ -1,6 +1,7 @@
 package backendutil_custom
 
 import (
+	"io"
 	"net"
 	"os"
 
@@ -32,6 +33,8 @@ func (helper *BackendApplicationHelper) Start() error {
 	if err != nil {
 		return err
 	}
+
+	helper.Backend.OnSocketConnection(helper.socket)
 
 	log.Debug("Sucessfully connected")
 
@@ -84,6 +87,46 @@ func (helper *BackendApplicationHelper) Start() error {
 			}
 
 			helper.socket.Write(responseMarshalled)
+		case *datacommands.ProxyInformationRequest:
+			response := helper.Backend.ResolveProxy(command.ProxyID)
+			responseMarshalled, err := datacommands.Marshal(response)
+
+			if err != nil {
+				log.Error("failed to marshal response: %s", err.Error())
+				continue
+			}
+
+			helper.socket.Write(responseMarshalled)
+		case *datacommands.ProxyConnectionInformationRequest:
+			response := helper.Backend.ResolveConnection(command.ProxyID, command.ConnectionID)
+			responseMarshalled, err := datacommands.Marshal(response)
+
+			if err != nil {
+				log.Error("failed to marshal response: %s", err.Error())
+				continue
+			}
+
+			helper.socket.Write(responseMarshalled)
+		case *datacommands.TCPConnectionClosed:
+			helper.Backend.OnTCPConnectionClosed(command.ProxyID, command.ConnectionID)
+		case *datacommands.TCPProxyData:
+			bytes := make([]byte, command.DataLength)
+			_, err := io.ReadFull(helper.socket, bytes)
+
+			if err != nil {
+				log.Warn("failed to read TCP data")
+			}
+
+			helper.Backend.HandleTCPMessage(command, bytes)
+		case *datacommands.UDPProxyData:
+			bytes := make([]byte, command.DataLength)
+			_, err := io.ReadFull(helper.socket, bytes)
+
+			if err != nil {
+				log.Warn("failed to read TCP data")
+			}
+
+			helper.Backend.HandleUDPMessage(command, bytes)
 		default:
 			commandRaw, err := commonbackend.Unmarshal(helper.socket)
 
