@@ -132,11 +132,11 @@ func (helper *BackendApplicationHelper) Start() error {
 			ok, err := helper.Backend.StartProxy(command)
 			var hasAnyFailed bool
 
-			if !ok {
-				log.Warnf("failed to add proxy (%s:%d -> remote:%d): StartProxy returned into failure state", command.SourceIP, command.SourcePort, command.DestPort)
-				hasAnyFailed = true
-			} else if err != nil {
+			if err != nil {
 				log.Warnf("failed to add proxy (%s:%d -> remote:%d): %s", command.SourceIP, command.SourcePort, command.DestPort, err.Error())
+				hasAnyFailed = true
+			} else if !ok {
+				log.Warnf("failed to add proxy (%s:%d -> remote:%d): StartProxy returned into failure state", command.SourceIP, command.SourcePort, command.DestPort)
 				hasAnyFailed = true
 			}
 
@@ -160,11 +160,11 @@ func (helper *BackendApplicationHelper) Start() error {
 			ok, err := helper.Backend.StopProxy(command)
 			var hasAnyFailed bool
 
-			if !ok {
-				log.Warnf("failed to remove proxy (%s:%d -> remote:%d): RemoveProxy returned into failure state", command.SourceIP, command.SourcePort, command.DestPort)
-				hasAnyFailed = true
-			} else if err != nil {
+			if err != nil {
 				log.Warnf("failed to remove proxy (%s:%d -> remote:%d): %s", command.SourceIP, command.SourcePort, command.DestPort, err.Error())
+				hasAnyFailed = true
+			} else if !ok {
+				log.Warnf("failed to remove proxy (%s:%d -> remote:%d): RemoveProxy returned into failure state", command.SourceIP, command.SourcePort, command.DestPort)
 				hasAnyFailed = true
 			}
 

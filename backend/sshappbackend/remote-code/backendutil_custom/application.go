@@ -8,6 +8,7 @@ import (
 	"git.terah.dev/imterah/hermes/backend/backendutil"
 	"git.terah.dev/imterah/hermes/backend/commonbackend"
 	"git.terah.dev/imterah/hermes/backend/sshappbackend/datacommands"
+	"git.terah.dev/imterah/hermes/backend/sshappbackend/gaslighter"
 	"github.com/charmbracelet/log"
 )
 
@@ -38,10 +39,28 @@ func (helper *BackendApplicationHelper) Start() error {
 
 	log.Debug("Sucessfully connected")
 
-	for {
-		commandRaw, err := datacommands.Unmarshal(helper.socket)
+	gaslighter := &gaslighter.Gaslighter{}
+	gaslighter.ProxiedReader = helper.socket
 
-		if err != nil && err.Error() != "couldn't match command ID" {
+	commandID := make([]byte, 1)
+
+	for {
+		if _, err := helper.socket.Read(commandID); err != nil {
+			return err
+		}
+
+		gaslighter.Byte = commandID[0]
+		gaslighter.HasGaslit = false
+
+		var commandRaw interface{}
+
+		if gaslighter.Byte > 100 {
+			commandRaw, err = datacommands.Unmarshal(gaslighter)
+		} else {
+			commandRaw, err = commonbackend.Unmarshal(gaslighter)
+		}
+
+		if err != nil {
 			return err
 		}
 
@@ -127,155 +146,146 @@ func (helper *BackendApplicationHelper) Start() error {
 			}
 
 			helper.Backend.HandleUDPMessage(command, bytes)
-		default:
-			commandRaw, err := commonbackend.Unmarshal(helper.socket)
+		case *commonbackend.Start:
+			ok, err := helper.Backend.StartBackend(command.Arguments)
+
+			var (
+				message    string
+				statusCode int
+			)
+
+			if err != nil {
+				message = err.Error()
+				statusCode = commonbackend.StatusFailure
+			} else {
+				statusCode = commonbackend.StatusSuccess
+			}
+
+			response := &commonbackend.BackendStatusResponse{
+				IsRunning:  ok,
+				StatusCode: statusCode,
+				Message:    message,
+			}
+
+			responseMarshalled, err := commonbackend.Marshal(response)
+
+			if err != nil {
+				log.Error("failed to marshal response: %s", err.Error())
+				continue
+			}
+
+			helper.socket.Write(responseMarshalled)
+		case *commonbackend.Stop:
+			ok, err := helper.Backend.StopBackend()
+
+			var (
+				message    string
+				statusCode int
+			)
+
+			if err != nil {
+				message = err.Error()
+				statusCode = commonbackend.StatusFailure
+			} else {
+				statusCode = commonbackend.StatusSuccess
+			}
+
+			response := &commonbackend.BackendStatusResponse{
+				IsRunning:  !ok,
+				StatusCode: statusCode,
+				Message:    message,
+			}
+
+			responseMarshalled, err := commonbackend.Marshal(response)
+
+			if err != nil {
+				log.Error("failed to marshal response: %s", err.Error())
+				continue
+			}
+
+			helper.socket.Write(responseMarshalled)
+		case *commonbackend.BackendStatusRequest:
+			ok, err := helper.Backend.GetBackendStatus()
+
+			var (
+				message    string
+				statusCode int
+			)
+
+			if err != nil {
+				message = err.Error()
+				statusCode = commonbackend.StatusFailure
+			} else {
+				statusCode = commonbackend.StatusSuccess
+			}
+
+			response := &commonbackend.BackendStatusResponse{
+				IsRunning:  ok,
+				StatusCode: statusCode,
+				Message:    message,
+			}
+
+			responseMarshalled, err := commonbackend.Marshal(response)
+
+			if err != nil {
+				log.Error("failed to marshal response: %s", err.Error())
+				continue
+			}
+
+			helper.socket.Write(responseMarshalled)
+		case *commonbackend.AddProxy:
+			id, ok, err := helper.Backend.StartProxy(command)
+			var hasAnyFailed bool
+
+			if !ok {
+				log.Warnf("failed to add proxy (%s:%d -> remote:%d): StartProxy returned into failure state", command.SourceIP, command.SourcePort, command.DestPort)
+				hasAnyFailed = true
+			} else if err != nil {
+				log.Warnf("failed to add proxy (%s:%d -> remote:%d): %s", command.SourceIP, command.SourcePort, command.DestPort, err.Error())
+				hasAnyFailed = true
+			}
+
+			response := &datacommands.ProxyStatusResponse{
+				ProxyID:  id,
+				IsActive: !hasAnyFailed,
+			}
+
+			responseMarshalled, err := datacommands.Marshal(response)
+
+			if err != nil {
+				log.Error("failed to marshal response: %s", err.Error())
+				continue
+			}
+
+			helper.socket.Write(responseMarshalled)
+		case *commonbackend.CheckClientParameters:
+			resp := helper.Backend.CheckParametersForConnections(command)
+			resp.InResponseTo = "checkClientParameters"
+
+			byteData, err := commonbackend.Marshal(resp)
 
 			if err != nil {
 				return err
 			}
 
-			switch command := commandRaw.(type) {
-			case *commonbackend.Start:
-				ok, err := helper.Backend.StartBackend(command.Arguments)
-
-				var (
-					message    string
-					statusCode int
-				)
-
-				if err != nil {
-					message = err.Error()
-					statusCode = commonbackend.StatusFailure
-				} else {
-					statusCode = commonbackend.StatusSuccess
-				}
-
-				response := &commonbackend.BackendStatusResponse{
-					IsRunning:  ok,
-					StatusCode: statusCode,
-					Message:    message,
-				}
-
-				responseMarshalled, err := commonbackend.Marshal(response)
-
-				if err != nil {
-					log.Error("failed to marshal response: %s", err.Error())
-					continue
-				}
-
-				helper.socket.Write(responseMarshalled)
-			case *commonbackend.Stop:
-				ok, err := helper.Backend.StopBackend()
-
-				var (
-					message    string
-					statusCode int
-				)
-
-				if err != nil {
-					message = err.Error()
-					statusCode = commonbackend.StatusFailure
-				} else {
-					statusCode = commonbackend.StatusSuccess
-				}
-
-				response := &commonbackend.BackendStatusResponse{
-					IsRunning:  !ok,
-					StatusCode: statusCode,
-					Message:    message,
-				}
-
-				responseMarshalled, err := commonbackend.Marshal(response)
-
-				if err != nil {
-					log.Error("failed to marshal response: %s", err.Error())
-					continue
-				}
-
-				helper.socket.Write(responseMarshalled)
-			case *commonbackend.BackendStatusRequest:
-				ok, err := helper.Backend.GetBackendStatus()
-
-				var (
-					message    string
-					statusCode int
-				)
-
-				if err != nil {
-					message = err.Error()
-					statusCode = commonbackend.StatusFailure
-				} else {
-					statusCode = commonbackend.StatusSuccess
-				}
-
-				response := &commonbackend.BackendStatusResponse{
-					IsRunning:  ok,
-					StatusCode: statusCode,
-					Message:    message,
-				}
-
-				responseMarshalled, err := commonbackend.Marshal(response)
-
-				if err != nil {
-					log.Error("failed to marshal response: %s", err.Error())
-					continue
-				}
-
-				helper.socket.Write(responseMarshalled)
-			case *commonbackend.AddProxy:
-				id, ok, err := helper.Backend.StartProxy(command)
-				var hasAnyFailed bool
-
-				if !ok {
-					log.Warnf("failed to add proxy (%s:%d -> remote:%d): StartProxy returned into failure state", command.SourceIP, command.SourcePort, command.DestPort)
-					hasAnyFailed = true
-				} else if err != nil {
-					log.Warnf("failed to add proxy (%s:%d -> remote:%d): %s", command.SourceIP, command.SourcePort, command.DestPort, err.Error())
-					hasAnyFailed = true
-				}
-
-				response := &datacommands.ProxyStatusResponse{
-					ProxyID:  id,
-					IsActive: !hasAnyFailed,
-				}
-
-				responseMarshalled, err := datacommands.Marshal(response)
-
-				if err != nil {
-					log.Error("failed to marshal response: %s", err.Error())
-					continue
-				}
-
-				helper.socket.Write(responseMarshalled)
-			case *commonbackend.CheckClientParameters:
-				resp := helper.Backend.CheckParametersForConnections(command)
-				resp.InResponseTo = "checkClientParameters"
-
-				byteData, err := commonbackend.Marshal(resp)
-
-				if err != nil {
-					return err
-				}
-
-				if _, err = helper.socket.Write(byteData); err != nil {
-					return err
-				}
-			case *commonbackend.CheckServerParameters:
-				resp := helper.Backend.CheckParametersForBackend(command.Arguments)
-				resp.InResponseTo = "checkServerParameters"
-
-				byteData, err := commonbackend.Marshal(resp)
-
-				if err != nil {
-					return err
-				}
-
-				if _, err = helper.socket.Write(byteData); err != nil {
-					return err
-				}
-			default:
-				log.Warnf("Unsupported command recieved: %T", command)
+			if _, err = helper.socket.Write(byteData); err != nil {
+				return err
 			}
+		case *commonbackend.CheckServerParameters:
+			resp := helper.Backend.CheckParametersForBackend(command.Arguments)
+			resp.InResponseTo = "checkServerParameters"
+
+			byteData, err := commonbackend.Marshal(resp)
+
+			if err != nil {
+				return err
+			}
+
+			if _, err = helper.socket.Write(byteData); err != nil {
+				return err
+			}
+		default:
+			log.Warnf("Unsupported command recieved: %T", command)
 		}
 	}
 }

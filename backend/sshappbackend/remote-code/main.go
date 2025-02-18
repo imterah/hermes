@@ -36,12 +36,16 @@ type SSHRemoteAppBackend struct {
 	tcpProxies map[uint16]*TCPProxy
 	udpProxies map[uint16]*UDPProxy
 
+	isRunning bool
+
 	sock net.Conn
 }
 
 func (backend *SSHRemoteAppBackend) StartBackend(byte []byte) (bool, error) {
 	backend.tcpProxies = map[uint16]*TCPProxy{}
 	backend.udpProxies = map[uint16]*UDPProxy{}
+
+	backend.isRunning = true
 
 	return true, nil
 }
@@ -61,11 +65,12 @@ func (backend *SSHRemoteAppBackend) StopBackend() (bool, error) {
 		delete(backend.udpProxies, udpProxyIndex)
 	}
 
+	backend.isRunning = false
 	return true, nil
 }
 
 func (backend *SSHRemoteAppBackend) GetBackendStatus() (bool, error) {
-	return true, nil
+	return backend.isRunning, nil
 }
 
 func (backend *SSHRemoteAppBackend) StartProxy(command *commonbackend.AddProxy) (uint16, bool, error) {
@@ -103,6 +108,8 @@ func (backend *SSHRemoteAppBackend) StartProxy(command *commonbackend.AddProxy) 
 					connectionID := backend.tcpProxies[proxyID].connectionIDIndex
 					backend.tcpProxies[proxyID].connectionIDIndex++
 					backend.tcpProxies[proxyID].connectionIDLock.Unlock()
+
+					backend.tcpProxies[proxyID].connections[connectionID] = conn
 
 					dataBuf := make([]byte, 65535)
 
@@ -372,12 +379,14 @@ func (backend *SSHRemoteAppBackend) HandleTCPMessage(message *datacommands.TCPPr
 	tcpProxy, ok := backend.tcpProxies[message.ProxyID]
 
 	if !ok {
+		log.Warnf("could not find tcp proxy (ID %d)", message.ProxyID)
 		return
 	}
 
 	connection, ok := tcpProxy.connections[message.ConnectionID]
 
 	if !ok {
+		log.Warnf("could not find tcp proxy (ID %d) with connection ID (%d)", message.ProxyID, message.ConnectionID)
 		return
 	}
 
