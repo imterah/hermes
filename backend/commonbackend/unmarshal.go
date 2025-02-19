@@ -213,7 +213,7 @@ func Unmarshal(conn io.Reader) (interface{}, error) {
 
 		if protocolBytes[0] == TCP {
 			protocol = "tcp"
-		} else if protocolBytes[1] == UDP {
+		} else if protocolBytes[0] == UDP {
 			protocol = "udp"
 		} else {
 			return nil, fmt.Errorf("invalid protocol")
@@ -270,7 +270,7 @@ func Unmarshal(conn io.Reader) (interface{}, error) {
 
 		if protocolBytes[0] == TCP {
 			protocol = "tcp"
-		} else if protocolBytes[1] == UDP {
+		} else if protocolBytes[0] == UDP {
 			protocol = "udp"
 		} else {
 			return nil, fmt.Errorf("invalid protocol")
@@ -364,7 +364,7 @@ func Unmarshal(conn io.Reader) (interface{}, error) {
 
 		if protocolBytes[0] == TCP {
 			protocol = "tcp"
-		} else if protocolBytes[1] == UDP {
+		} else if protocolBytes[0] == UDP {
 			protocol = "udp"
 		} else {
 			return nil, fmt.Errorf("invalid protocol")
@@ -523,7 +523,7 @@ func Unmarshal(conn io.Reader) (interface{}, error) {
 
 		if protocolBytes[0] == TCP {
 			protocol = "tcp"
-		} else if protocolBytes[1] == UDP {
+		} else if protocolBytes[0] == UDP {
 			protocol = "udp"
 		} else {
 			return nil, fmt.Errorf("invalid protocol")
@@ -580,7 +580,7 @@ func Unmarshal(conn io.Reader) (interface{}, error) {
 
 		if protocolBytes[0] == TCP {
 			protocol = "tcp"
-		} else if protocolBytes[1] == UDP {
+		} else if protocolBytes[0] == UDP {
 			protocol = "udp"
 		} else {
 			return nil, fmt.Errorf("invalid protocol")

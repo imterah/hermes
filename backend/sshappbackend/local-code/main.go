@@ -19,6 +19,7 @@ import (
 	"git.terah.dev/imterah/hermes/backend/commonbackend"
 	"git.terah.dev/imterah/hermes/backend/sshappbackend/datacommands"
 	"git.terah.dev/imterah/hermes/backend/sshappbackend/gaslighter"
+	"git.terah.dev/imterah/hermes/backend/sshappbackend/local-code/porttranslation"
 	"github.com/charmbracelet/log"
 	"github.com/go-playground/validator/v10"
 	"github.com/pkg/sftp"
@@ -32,6 +33,7 @@ type TCPProxy struct {
 
 type UDPProxy struct {
 	proxyInformation *commonbackend.AddProxy
+	portTranslation  *porttranslation.PortTranslation
 }
 
 type SSHAppBackendData struct {
@@ -397,7 +399,56 @@ func (backend *SSHAppBackend) StartProxy(command *commonbackend.AddProxy) (bool,
 	} else if command.Protocol == "udp" {
 		backend.udpProxies[proxyStatus.ProxyID] = &UDPProxy{
 			proxyInformation: command,
+			portTranslation:  &porttranslation.PortTranslation{},
 		}
+
+		backend.udpProxies[proxyStatus.ProxyID].portTranslation.UDPAddr = &net.UDPAddr{
+			IP:   net.ParseIP(command.SourceIP),
+			Port: int(command.SourcePort),
+		}
+
+		udpMessageCommand := &datacommands.UDPProxyData{}
+		udpMessageCommand.ProxyID = proxyStatus.ProxyID
+
+		backend.udpProxies[proxyStatus.ProxyID].portTranslation.WriteFrom = func(ip string, port uint16, data []byte) {
+			udpMessageCommand.ClientIP = ip
+			udpMessageCommand.ClientPort = port
+			udpMessageCommand.DataLength = uint16(len(data))
+
+			marshalledCommand, err := datacommands.Marshal(udpMessageCommand)
+
+			if err != nil {
+				log.Warnf("Failed to marshal UDP message header")
+				return
+			}
+
+			if _, err := backend.currentSock.Write(marshalledCommand); err != nil {
+				log.Warnf("Failed to write UDP message header")
+				return
+			}
+
+			if _, err := backend.currentSock.Write(data); err != nil {
+				log.Warnf("Failed to write UDP message")
+				return
+			}
+		}
+
+		go func() {
+			for {
+				time.Sleep(3 * time.Minute)
+
+				// Checks if the proxy still exists before continuing
+				_, ok := backend.udpProxies[proxyStatus.ProxyID]
+
+				if !ok {
+					return
+				}
+
+				// Then attempt to run cleanup tasks
+				log.Debug("Running UDP proxy cleanup tasks (invoking CleanupPorts() on portTranslation)")
+				backend.udpProxies[proxyStatus.ProxyID].portTranslation.CleanupPorts()
+			}
+		}()
 	}
 
 	return true, nil
@@ -474,17 +525,20 @@ func (backend *SSHAppBackend) StopProxy(command *commonbackend.RemoveProxy) (boo
 				return true, fmt.Errorf("failed to stop proxy: still running")
 			}
 
-			// TODO: finish code for UDP
+			proxy.portTranslation.StopAllPorts()
+			delete(backend.udpProxies, proxyIndex)
 		}
 	}
 
 	return false, fmt.Errorf("could not find the proxy")
 }
 
+// TODO: implement!
 func (backend *SSHAppBackend) GetAllClientConnections() []*commonbackend.ProxyClientConnection {
 	return []*commonbackend.ProxyClientConnection{}
 }
 
+// We don't have any parameter limitations, so we should be good.
 func (backend *SSHAppBackend) CheckParametersForConnections(clientParameters *commonbackend.CheckClientParameters) *commonbackend.CheckParametersResponse {
 	return &commonbackend.CheckParametersResponse{
 		IsValid: true,
@@ -617,7 +671,17 @@ func (backend *SSHAppBackend) HandleTCPMessage(message *datacommands.TCPProxyDat
 	connection.Write(data)
 }
 
-func (backend *SSHAppBackend) HandleUDPMessage(message *datacommands.UDPProxyData, data []byte) {}
+func (backend *SSHAppBackend) HandleUDPMessage(message *datacommands.UDPProxyData, data []byte) {
+	proxy, ok := backend.udpProxies[message.ProxyID]
+
+	if !ok {
+		log.Warn("Could not find UDP proxy")
+	}
+
+	if _, err := proxy.portTranslation.WriteTo(message.ClientIP, message.ClientPort, data); err != nil {
+		log.Warnf("Failed to write to UDP: %s", err.Error())
+	}
+}
 
 func (backend *SSHAppBackend) SendNonCriticalMessage(iface interface{}) (interface{}, error) {
 	if backend.currentSock == nil {
