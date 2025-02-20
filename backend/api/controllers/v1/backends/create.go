@@ -126,7 +126,6 @@ func CreateBackend(c *gin.Context) {
 	}
 
 	backendParamCheckResponse, err := backend.ProcessCommand(&commonbackend.CheckServerParameters{
-		Type:      "checkServerParameters",
 		Arguments: backendParameters,
 	})
 
@@ -216,7 +215,6 @@ func CreateBackend(c *gin.Context) {
 	}
 
 	backendStartResponse, err := backend.ProcessCommand(&commonbackend.Start{
-		Type:      "start",
 		Arguments: backendParameters,
 	})
 

@@ -111,7 +111,6 @@ func RemoveProxy(c *gin.Context) {
 	}
 
 	backendResponse, err := backend.ProcessCommand(&commonbackend.RemoveProxy{
-		Type:       "removeProxy",
 		SourceIP:   proxy.SourceIP,
 		SourcePort: proxy.SourcePort,
 		DestPort:   proxy.DestinationPort,

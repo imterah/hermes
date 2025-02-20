@@ -7,4 +7,5 @@ WORKDIR /app
 COPY --from=build /build/backend/backends.prod.json /app/backends.json
 COPY --from=build /build/backend/api/api /app/hermes
 COPY --from=build /build/backend/sshbackend/sshbackend /app/sshbackend
+COPY --from=build /build/backend/sshappbackend/local-code/sshappbackend /app/sshappbackend
 ENTRYPOINT ["/app/hermes", "--backends-path", "/app/backends.json"]

@@ -1,7 +1,6 @@
 package backendutil
 
 import (
-	"fmt"
 	"net"
 	"os"
 
@@ -18,7 +17,7 @@ type BackendApplicationHelper struct {
 
 func (helper *BackendApplicationHelper) Start() error {
 	log.Debug("BackendApplicationHelper is starting")
-	err := configureAndLaunchBackgroundProfilingTasks()
+	err := ConfigureProfiling()
 
 	if err != nil {
 		return err
@@ -35,21 +34,15 @@ func (helper *BackendApplicationHelper) Start() error {
 	log.Debug("Sucessfully connected")
 
 	for {
-		commandType, commandRaw, err := commonbackend.Unmarshal(helper.socket)
+		commandRaw, err := commonbackend.Unmarshal(helper.socket)
 
 		if err != nil {
 			return err
 		}
 
-		switch commandType {
-		case "start":
-			command, ok := commandRaw.(*commonbackend.Start)
-
-			if !ok {
-				return fmt.Errorf("failed to typecast")
-			}
-
-			ok, err = helper.Backend.StartBackend(command.Arguments)
+		switch command := commandRaw.(type) {
+		case *commonbackend.Start:
+			ok, err := helper.Backend.StartBackend(command.Arguments)
 
 			var (
 				message    string
@@ -64,13 +57,12 @@ func (helper *BackendApplicationHelper) Start() error {
 			}
 
 			response := &commonbackend.BackendStatusResponse{
-				Type:       "backendStatusResponse",
 				IsRunning:  ok,
 				StatusCode: statusCode,
 				Message:    message,
 			}
 
-			responseMarshalled, err := commonbackend.Marshal(response.Type, response)
+			responseMarshalled, err := commonbackend.Marshal(response)
 
 			if err != nil {
 				log.Error("failed to marshal response: %s", err.Error())
@@ -78,13 +70,7 @@ func (helper *BackendApplicationHelper) Start() error {
 			}
 
 			helper.socket.Write(responseMarshalled)
-		case "backendStatusRequest":
-			_, ok := commandRaw.(*commonbackend.BackendStatusRequest)
-
-			if !ok {
-				return fmt.Errorf("failed to typecast")
-			}
-
+		case *commonbackend.BackendStatusRequest:
 			ok, err := helper.Backend.GetBackendStatus()
 
 			var (
@@ -100,13 +86,12 @@ func (helper *BackendApplicationHelper) Start() error {
 			}
 
 			response := &commonbackend.BackendStatusResponse{
-				Type:       "backendStatusResponse",
 				IsRunning:  ok,
 				StatusCode: statusCode,
 				Message:    message,
 			}
 
-			responseMarshalled, err := commonbackend.Marshal(response.Type, response)
+			responseMarshalled, err := commonbackend.Marshal(response)
 
 			if err != nil {
 				log.Error("failed to marshal response: %s", err.Error())
@@ -114,14 +99,8 @@ func (helper *BackendApplicationHelper) Start() error {
 			}
 
 			helper.socket.Write(responseMarshalled)
-		case "stop":
-			_, ok := commandRaw.(*commonbackend.Stop)
-
-			if !ok {
-				return fmt.Errorf("failed to typecast")
-			}
-
-			ok, err = helper.Backend.StopBackend()
+		case *commonbackend.Stop:
+			ok, err := helper.Backend.StopBackend()
 
 			var (
 				message    string
@@ -136,13 +115,12 @@ func (helper *BackendApplicationHelper) Start() error {
 			}
 
 			response := &commonbackend.BackendStatusResponse{
-				Type:       "backendStatusResponse",
 				IsRunning:  !ok,
 				StatusCode: statusCode,
 				Message:    message,
 			}
 
-			responseMarshalled, err := commonbackend.Marshal(response.Type, response)
+			responseMarshalled, err := commonbackend.Marshal(response)
 
 			if err != nil {
 				log.Error("failed to marshal response: %s", err.Error())
@@ -150,26 +128,19 @@ func (helper *BackendApplicationHelper) Start() error {
 			}
 
 			helper.socket.Write(responseMarshalled)
-		case "addProxy":
-			command, ok := commandRaw.(*commonbackend.AddProxy)
-
-			if !ok {
-				return fmt.Errorf("failed to typecast")
-			}
-
-			ok, err = helper.Backend.StartProxy(command)
+		case *commonbackend.AddProxy:
+			ok, err := helper.Backend.StartProxy(command)
 			var hasAnyFailed bool
 
-			if !ok {
-				log.Warnf("failed to add proxy (%s:%d -> remote:%d): StartProxy returned into failure state", command.SourceIP, command.SourcePort, command.DestPort)
-				hasAnyFailed = true
-			} else if err != nil {
+			if err != nil {
 				log.Warnf("failed to add proxy (%s:%d -> remote:%d): %s", command.SourceIP, command.SourcePort, command.DestPort, err.Error())
+				hasAnyFailed = true
+			} else if !ok {
+				log.Warnf("failed to add proxy (%s:%d -> remote:%d): StartProxy returned into failure state", command.SourceIP, command.SourcePort, command.DestPort)
 				hasAnyFailed = true
 			}
 
 			response := &commonbackend.ProxyStatusResponse{
-				Type:       "proxyStatusResponse",
 				SourceIP:   command.SourceIP,
 				SourcePort: command.SourcePort,
 				DestPort:   command.DestPort,
@@ -177,7 +148,7 @@ func (helper *BackendApplicationHelper) Start() error {
 				IsActive:   !hasAnyFailed,
 			}
 
-			responseMarshalled, err := commonbackend.Marshal(response.Type, response)
+			responseMarshalled, err := commonbackend.Marshal(response)
 
 			if err != nil {
 				log.Error("failed to marshal response: %s", err.Error())
@@ -185,26 +156,19 @@ func (helper *BackendApplicationHelper) Start() error {
 			}
 
 			helper.socket.Write(responseMarshalled)
-		case "removeProxy":
-			command, ok := commandRaw.(*commonbackend.RemoveProxy)
-
-			if !ok {
-				return fmt.Errorf("failed to typecast")
-			}
-
-			ok, err = helper.Backend.StopProxy(command)
+		case *commonbackend.RemoveProxy:
+			ok, err := helper.Backend.StopProxy(command)
 			var hasAnyFailed bool
 
-			if !ok {
-				log.Warnf("failed to remove proxy (%s:%d -> remote:%d): RemoveProxy returned into failure state", command.SourceIP, command.SourcePort, command.DestPort)
-				hasAnyFailed = true
-			} else if err != nil {
+			if err != nil {
 				log.Warnf("failed to remove proxy (%s:%d -> remote:%d): %s", command.SourceIP, command.SourcePort, command.DestPort, err.Error())
+				hasAnyFailed = true
+			} else if !ok {
+				log.Warnf("failed to remove proxy (%s:%d -> remote:%d): RemoveProxy returned into failure state", command.SourceIP, command.SourcePort, command.DestPort)
 				hasAnyFailed = true
 			}
 
 			response := &commonbackend.ProxyStatusResponse{
-				Type:       "proxyStatusResponse",
 				SourceIP:   command.SourceIP,
 				SourcePort: command.SourcePort,
 				DestPort:   command.DestPort,
@@ -212,7 +176,7 @@ func (helper *BackendApplicationHelper) Start() error {
 				IsActive:   hasAnyFailed,
 			}
 
-			responseMarshalled, err := commonbackend.Marshal(response.Type, response)
+			responseMarshalled, err := commonbackend.Marshal(response)
 
 			if err != nil {
 				log.Error("failed to marshal response: %s", err.Error())
@@ -220,21 +184,14 @@ func (helper *BackendApplicationHelper) Start() error {
 			}
 
 			helper.socket.Write(responseMarshalled)
-		case "proxyConnectionsRequest":
-			_, ok := commandRaw.(*commonbackend.ProxyConnectionsRequest)
-
-			if !ok {
-				return fmt.Errorf("failed to typecast")
-			}
-
+		case *commonbackend.ProxyConnectionsRequest:
 			connections := helper.Backend.GetAllClientConnections()
 
 			serverParams := &commonbackend.ProxyConnectionsResponse{
-				Type:        "proxyConnectionsResponse",
 				Connections: connections,
 			}
 
-			byteData, err := commonbackend.Marshal(serverParams.Type, serverParams)
+			byteData, err := commonbackend.Marshal(serverParams)
 
 			if err != nil {
 				return err
@@ -243,18 +200,11 @@ func (helper *BackendApplicationHelper) Start() error {
 			if _, err = helper.socket.Write(byteData); err != nil {
 				return err
 			}
-		case "checkClientParameters":
-			command, ok := commandRaw.(*commonbackend.CheckClientParameters)
-
-			if !ok {
-				return fmt.Errorf("failed to typecast")
-			}
-
+		case *commonbackend.CheckClientParameters:
 			resp := helper.Backend.CheckParametersForConnections(command)
-			resp.Type = "checkParametersResponse"
 			resp.InResponseTo = "checkClientParameters"
 
-			byteData, err := commonbackend.Marshal(resp.Type, resp)
+			byteData, err := commonbackend.Marshal(resp)
 
 			if err != nil {
 				return err
@@ -263,18 +213,11 @@ func (helper *BackendApplicationHelper) Start() error {
 			if _, err = helper.socket.Write(byteData); err != nil {
 				return err
 			}
-		case "checkServerParameters":
-			command, ok := commandRaw.(*commonbackend.CheckServerParameters)
-
-			if !ok {
-				return fmt.Errorf("failed to typecast")
-			}
-
+		case *commonbackend.CheckServerParameters:
 			resp := helper.Backend.CheckParametersForBackend(command.Arguments)
-			resp.Type = "checkParametersResponse"
 			resp.InResponseTo = "checkServerParameters"
 
-			byteData, err := commonbackend.Marshal(resp.Type, resp)
+			byteData, err := commonbackend.Marshal(resp)
 
 			if err != nil {
 				return err
@@ -283,6 +226,8 @@ func (helper *BackendApplicationHelper) Start() error {
 			if _, err = helper.socket.Write(byteData); err != nil {
 				return err
 			}
+		default:
+			log.Warnf("Unsupported command recieved: %T", command)
 		}
 	}
 }

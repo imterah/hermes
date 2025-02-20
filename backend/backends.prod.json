@@ -2,5 +2,9 @@
   {
     "name": "ssh",
     "path": "./sshbackend"
+  },
+  {
+    "name": "sshapp",
+    "path": "./sshappbackend"
   }
 ]

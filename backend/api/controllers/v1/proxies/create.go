@@ -142,7 +142,6 @@ func CreateProxy(c *gin.Context) {
 		}
 
 		backendResponse, err := backend.ProcessCommand(&commonbackend.AddProxy{
-			Type:       "addProxy",
 			SourceIP:   proxy.SourceIP,
 			SourcePort: proxy.SourcePort,
 			DestPort:   proxy.DestinationPort,

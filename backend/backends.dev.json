@@ -4,6 +4,10 @@
     "path": "./sshbackend/sshbackend"
   },
   {
+    "name": "sshapp",
+    "path": "./sshappbackend/local-code/sshappbackend"
+  },
+  {
     "name": "dummy",
     "path": "./dummybackend/dummybackend"
   }

@@ -108,8 +108,7 @@ func apiEntrypoint(cCtx *cli.Context) error {
 				return
 			}
 
-			marshalledStartCommand, err := commonbackend.Marshal("start", &commonbackend.Start{
-				Type:      "start",
+			marshalledStartCommand, err := commonbackend.Marshal(&commonbackend.Start{
 				Arguments: backendParameters,
 			})
 
@@ -123,7 +122,7 @@ func apiEntrypoint(cCtx *cli.Context) error {
 				return
 			}
 
-			_, backendResponse, err := commonbackend.Unmarshal(conn)
+			backendResponse, err := commonbackend.Unmarshal(conn)
 
 			if err != nil {
 				log.Errorf("Failed to get start command response for backend #%d: %s", backend.ID, err.Error())
@@ -152,8 +151,7 @@ func apiEntrypoint(cCtx *cli.Context) error {
 			for _, proxy := range autoStartProxies {
 				log.Infof("Starting up route #%d for backend #%d: %s", proxy.ID, backend.ID, proxy.Name)
 
-				marhalledCommand, err := commonbackend.Marshal("addProxy", &commonbackend.AddProxy{
-					Type:       "addProxy",
+				marhalledCommand, err := commonbackend.Marshal(&commonbackend.AddProxy{
 					SourceIP:   proxy.SourceIP,
 					SourcePort: proxy.SourcePort,
 					DestPort:   proxy.DestinationPort,
@@ -170,7 +168,7 @@ func apiEntrypoint(cCtx *cli.Context) error {
 					continue
 				}
 
-				_, backendResponse, err := commonbackend.Unmarshal(conn)
+				backendResponse, err := commonbackend.Unmarshal(conn)
 
 				if err != nil {
 					log.Errorf("Failed to get response for backend #%d and route #%d: %s", proxy.BackendID, proxy.ID, err.Error())
@@ -204,7 +202,6 @@ func apiEntrypoint(cCtx *cli.Context) error {
 		}
 
 		backendStartResponse, err := backendInstance.ProcessCommand(&commonbackend.Start{
-			Type:      "start",
 			Arguments: backendParameters,
 		})
 
@@ -257,7 +254,6 @@ func apiEntrypoint(cCtx *cli.Context) error {
 			log.Infof("Starting up route #%d for backend #%d: %s", proxy.ID, backend.ID, proxy.Name)
 
 			backendResponse, err := backendInstance.ProcessCommand(&commonbackend.AddProxy{
-				Type:       "addProxy",
 				SourceIP:   proxy.SourceIP,
 				SourcePort: proxy.SourcePort,
 				DestPort:   proxy.DestinationPort,

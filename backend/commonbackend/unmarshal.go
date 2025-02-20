@@ -142,11 +142,11 @@ func unmarshalIndividualProxyStruct(conn io.Reader) (*ProxyInstance, error) {
 	}, nil
 }
 
-func Unmarshal(conn io.Reader) (string, interface{}, error) {
+func Unmarshal(conn io.Reader) (interface{}, error) {
 	commandType := make([]byte, 1)
 
 	if _, err := conn.Read(commandType); err != nil {
-		return "", nil, fmt.Errorf("couldn't read command")
+		return nil, fmt.Errorf("couldn't read command")
 	}
 
 	switch commandType[0] {
@@ -154,28 +154,25 @@ func Unmarshal(conn io.Reader) (string, interface{}, error) {
 		argumentsLength := make([]byte, 2)
 
 		if _, err := conn.Read(argumentsLength); err != nil {
-			return "", nil, fmt.Errorf("couldn't read argument length")
+			return nil, fmt.Errorf("couldn't read argument length")
 		}
 
 		arguments := make([]byte, binary.BigEndian.Uint16(argumentsLength))
 
 		if _, err := conn.Read(arguments); err != nil {
-			return "", nil, fmt.Errorf("couldn't read arguments")
+			return nil, fmt.Errorf("couldn't read arguments")
 		}
 
-		return "start", &Start{
-			Type:      "start",
+		return &Start{
 			Arguments: arguments,
 		}, nil
 	case StopID:
-		return "stop", &Stop{
-			Type: "stop",
-		}, nil
+		return &Stop{}, nil
 	case AddProxyID:
 		ipVersion := make([]byte, 1)
 
 		if _, err := conn.Read(ipVersion); err != nil {
-			return "", nil, fmt.Errorf("couldn't read ip version")
+			return nil, fmt.Errorf("couldn't read ip version")
 		}
 
 		var ipSize uint8
@@ -185,45 +182,44 @@ func Unmarshal(conn io.Reader) (string, interface{}, error) {
 		} else if ipVersion[0] == 6 {
 			ipSize = IPv6Size
 		} else {
-			return "", nil, fmt.Errorf("invalid IP version recieved")
+			return nil, fmt.Errorf("invalid IP version recieved")
 		}
 
 		ip := make(net.IP, ipSize)
 
 		if _, err := conn.Read(ip); err != nil {
-			return "", nil, fmt.Errorf("couldn't read source IP")
+			return nil, fmt.Errorf("couldn't read source IP")
 		}
 
 		sourcePort := make([]byte, 2)
 
 		if _, err := conn.Read(sourcePort); err != nil {
-			return "", nil, fmt.Errorf("couldn't read source port")
+			return nil, fmt.Errorf("couldn't read source port")
 		}
 
 		destPort := make([]byte, 2)
 
 		if _, err := conn.Read(destPort); err != nil {
-			return "", nil, fmt.Errorf("couldn't read destination port")
+			return nil, fmt.Errorf("couldn't read destination port")
 		}
 
 		protocolBytes := make([]byte, 1)
 
 		if _, err := conn.Read(protocolBytes); err != nil {
-			return "", nil, fmt.Errorf("couldn't read protocol")
+			return nil, fmt.Errorf("couldn't read protocol")
 		}
 
 		var protocol string
 
 		if protocolBytes[0] == TCP {
 			protocol = "tcp"
-		} else if protocolBytes[1] == UDP {
+		} else if protocolBytes[0] == UDP {
 			protocol = "udp"
 		} else {
-			return "", nil, fmt.Errorf("invalid protocol")
+			return nil, fmt.Errorf("invalid protocol")
 		}
 
-		return "addProxy", &AddProxy{
-			Type:       "addProxy",
+		return &AddProxy{
 			SourceIP:   ip.String(),
 			SourcePort: binary.BigEndian.Uint16(sourcePort),
 			DestPort:   binary.BigEndian.Uint16(destPort),
@@ -233,7 +229,7 @@ func Unmarshal(conn io.Reader) (string, interface{}, error) {
 		ipVersion := make([]byte, 1)
 
 		if _, err := conn.Read(ipVersion); err != nil {
-			return "", nil, fmt.Errorf("couldn't read ip version")
+			return nil, fmt.Errorf("couldn't read ip version")
 		}
 
 		var ipSize uint8
@@ -243,45 +239,44 @@ func Unmarshal(conn io.Reader) (string, interface{}, error) {
 		} else if ipVersion[0] == 6 {
 			ipSize = IPv6Size
 		} else {
-			return "", nil, fmt.Errorf("invalid IP version recieved")
+			return nil, fmt.Errorf("invalid IP version recieved")
 		}
 
 		ip := make(net.IP, ipSize)
 
 		if _, err := conn.Read(ip); err != nil {
-			return "", nil, fmt.Errorf("couldn't read source IP")
+			return nil, fmt.Errorf("couldn't read source IP")
 		}
 
 		sourcePort := make([]byte, 2)
 
 		if _, err := conn.Read(sourcePort); err != nil {
-			return "", nil, fmt.Errorf("couldn't read source port")
+			return nil, fmt.Errorf("couldn't read source port")
 		}
 
 		destPort := make([]byte, 2)
 
 		if _, err := conn.Read(destPort); err != nil {
-			return "", nil, fmt.Errorf("couldn't read destination port")
+			return nil, fmt.Errorf("couldn't read destination port")
 		}
 
 		protocolBytes := make([]byte, 1)
 
 		if _, err := conn.Read(protocolBytes); err != nil {
-			return "", nil, fmt.Errorf("couldn't read protocol")
+			return nil, fmt.Errorf("couldn't read protocol")
 		}
 
 		var protocol string
 
 		if protocolBytes[0] == TCP {
 			protocol = "tcp"
-		} else if protocolBytes[1] == UDP {
+		} else if protocolBytes[0] == UDP {
 			protocol = "udp"
 		} else {
-			return "", nil, fmt.Errorf("invalid protocol")
+			return nil, fmt.Errorf("invalid protocol")
 		}
 
-		return "removeProxy", &RemoveProxy{
-			Type:       "removeProxy",
+		return &RemoveProxy{
 			SourceIP:   ip.String(),
 			SourcePort: binary.BigEndian.Uint16(sourcePort),
 			DestPort:   binary.BigEndian.Uint16(destPort),
@@ -301,13 +296,13 @@ func Unmarshal(conn io.Reader) (string, interface{}, error) {
 					break
 				}
 
-				return "", nil, err
+				return nil, err
 			}
 
 			connections = append(connections, connection)
 
 			if _, err := conn.Read(delimiter); err != nil {
-				return "", nil, fmt.Errorf("couldn't read delimiter")
+				return nil, fmt.Errorf("couldn't read delimiter")
 			}
 
 			if delimiter[0] == '\r' {
@@ -321,15 +316,14 @@ func Unmarshal(conn io.Reader) (string, interface{}, error) {
 			}
 		}
 
-		return "proxyConnectionsResponse", &ProxyConnectionsResponse{
-			Type:        "proxyConnectionsResponse",
+		return &ProxyConnectionsResponse{
 			Connections: connections,
 		}, errorReturn
 	case CheckClientParametersID:
 		ipVersion := make([]byte, 1)
 
 		if _, err := conn.Read(ipVersion); err != nil {
-			return "", nil, fmt.Errorf("couldn't read ip version")
+			return nil, fmt.Errorf("couldn't read ip version")
 		}
 
 		var ipSize uint8
@@ -339,45 +333,44 @@ func Unmarshal(conn io.Reader) (string, interface{}, error) {
 		} else if ipVersion[0] == 6 {
 			ipSize = IPv6Size
 		} else {
-			return "", nil, fmt.Errorf("invalid IP version recieved")
+			return nil, fmt.Errorf("invalid IP version recieved")
 		}
 
 		ip := make(net.IP, ipSize)
 
 		if _, err := conn.Read(ip); err != nil {
-			return "", nil, fmt.Errorf("couldn't read source IP")
+			return nil, fmt.Errorf("couldn't read source IP")
 		}
 
 		sourcePort := make([]byte, 2)
 
 		if _, err := conn.Read(sourcePort); err != nil {
-			return "", nil, fmt.Errorf("couldn't read source port")
+			return nil, fmt.Errorf("couldn't read source port")
 		}
 
 		destPort := make([]byte, 2)
 
 		if _, err := conn.Read(destPort); err != nil {
-			return "", nil, fmt.Errorf("couldn't read destination port")
+			return nil, fmt.Errorf("couldn't read destination port")
 		}
 
 		protocolBytes := make([]byte, 1)
 
 		if _, err := conn.Read(protocolBytes); err != nil {
-			return "", nil, fmt.Errorf("couldn't read protocol")
+			return nil, fmt.Errorf("couldn't read protocol")
 		}
 
 		var protocol string
 
 		if protocolBytes[0] == TCP {
 			protocol = "tcp"
-		} else if protocolBytes[1] == UDP {
+		} else if protocolBytes[0] == UDP {
 			protocol = "udp"
 		} else {
-			return "", nil, fmt.Errorf("invalid protocol")
+			return nil, fmt.Errorf("invalid protocol")
 		}
 
-		return "checkClientParameters", &CheckClientParameters{
-			Type:       "checkClientParameters",
+		return &CheckClientParameters{
 			SourceIP:   ip.String(),
 			SourcePort: binary.BigEndian.Uint16(sourcePort),
 			DestPort:   binary.BigEndian.Uint16(destPort),
@@ -387,24 +380,23 @@ func Unmarshal(conn io.Reader) (string, interface{}, error) {
 		argumentsLength := make([]byte, 2)
 
 		if _, err := conn.Read(argumentsLength); err != nil {
-			return "", nil, fmt.Errorf("couldn't read argument length")
+			return nil, fmt.Errorf("couldn't read argument length")
 		}
 
 		arguments := make([]byte, binary.BigEndian.Uint16(argumentsLength))
 
 		if _, err := conn.Read(arguments); err != nil {
-			return "", nil, fmt.Errorf("couldn't read arguments")
+			return nil, fmt.Errorf("couldn't read arguments")
 		}
 
-		return "checkServerParameters", &CheckServerParameters{
-			Type:      "checkServerParameters",
+		return &CheckServerParameters{
 			Arguments: arguments,
 		}, nil
 	case CheckParametersResponseID:
 		checkMethodByte := make([]byte, 1)
 
 		if _, err := conn.Read(checkMethodByte); err != nil {
-			return "", nil, fmt.Errorf("couldn't read check method byte")
+			return nil, fmt.Errorf("couldn't read check method byte")
 		}
 
 		var checkMethod string
@@ -414,19 +406,19 @@ func Unmarshal(conn io.Reader) (string, interface{}, error) {
 		} else if checkMethodByte[0] == CheckServerParametersID {
 			checkMethod = "checkServerParameters"
 		} else {
-			return "", nil, fmt.Errorf("invalid check method recieved")
+			return nil, fmt.Errorf("invalid check method recieved")
 		}
 
 		isValid := make([]byte, 1)
 
 		if _, err := conn.Read(isValid); err != nil {
-			return "", nil, fmt.Errorf("couldn't read isValid byte")
+			return nil, fmt.Errorf("couldn't read isValid byte")
 		}
 
 		messageLengthBytes := make([]byte, 2)
 
 		if _, err := conn.Read(messageLengthBytes); err != nil {
-			return "", nil, fmt.Errorf("couldn't read message length")
+			return nil, fmt.Errorf("couldn't read message length")
 		}
 
 		messageLength := binary.BigEndian.Uint16(messageLengthBytes)
@@ -436,14 +428,13 @@ func Unmarshal(conn io.Reader) (string, interface{}, error) {
 			messageBytes := make([]byte, messageLength)
 
 			if _, err := conn.Read(messageBytes); err != nil {
-				return "", nil, fmt.Errorf("couldn't read message")
+				return nil, fmt.Errorf("couldn't read message")
 			}
 
 			message = string(messageBytes)
 		}
 
-		return "checkParametersResponse", &CheckParametersResponse{
-			Type:         "checkParametersResponse",
+		return &CheckParametersResponse{
 			InResponseTo: checkMethod,
 			IsValid:      isValid[0] == 1,
 			Message:      message,
@@ -452,19 +443,19 @@ func Unmarshal(conn io.Reader) (string, interface{}, error) {
 		isRunning := make([]byte, 1)
 
 		if _, err := conn.Read(isRunning); err != nil {
-			return "", nil, fmt.Errorf("couldn't read isRunning field")
+			return nil, fmt.Errorf("couldn't read isRunning field")
 		}
 
 		statusCode := make([]byte, 1)
 
 		if _, err := conn.Read(statusCode); err != nil {
-			return "", nil, fmt.Errorf("couldn't read status code field")
+			return nil, fmt.Errorf("couldn't read status code field")
 		}
 
 		messageLengthBytes := make([]byte, 2)
 
 		if _, err := conn.Read(messageLengthBytes); err != nil {
-			return "", nil, fmt.Errorf("couldn't read message length")
+			return nil, fmt.Errorf("couldn't read message length")
 		}
 
 		messageLength := binary.BigEndian.Uint16(messageLengthBytes)
@@ -474,27 +465,24 @@ func Unmarshal(conn io.Reader) (string, interface{}, error) {
 			messageBytes := make([]byte, messageLength)
 
 			if _, err := conn.Read(messageBytes); err != nil {
-				return "", nil, fmt.Errorf("couldn't read message")
+				return nil, fmt.Errorf("couldn't read message")
 			}
 
 			message = string(messageBytes)
 		}
 
-		return "backendStatusResponse", &BackendStatusResponse{
-			Type:       "backendStatusResponse",
+		return &BackendStatusResponse{
 			IsRunning:  isRunning[0] == 1,
 			StatusCode: int(statusCode[0]),
 			Message:    message,
 		}, nil
 	case BackendStatusRequestID:
-		return "backendStatusRequest", &BackendStatusRequest{
-			Type: "backendStatusRequest",
-		}, nil
+		return &BackendStatusRequest{}, nil
 	case ProxyStatusRequestID:
 		ipVersion := make([]byte, 1)
 
 		if _, err := conn.Read(ipVersion); err != nil {
-			return "", nil, fmt.Errorf("couldn't read ip version")
+			return nil, fmt.Errorf("couldn't read ip version")
 		}
 
 		var ipSize uint8
@@ -504,45 +492,44 @@ func Unmarshal(conn io.Reader) (string, interface{}, error) {
 		} else if ipVersion[0] == 6 {
 			ipSize = IPv6Size
 		} else {
-			return "", nil, fmt.Errorf("invalid IP version recieved")
+			return nil, fmt.Errorf("invalid IP version recieved")
 		}
 
 		ip := make(net.IP, ipSize)
 
 		if _, err := conn.Read(ip); err != nil {
-			return "", nil, fmt.Errorf("couldn't read source IP")
+			return nil, fmt.Errorf("couldn't read source IP")
 		}
 
 		sourcePort := make([]byte, 2)
 
 		if _, err := conn.Read(sourcePort); err != nil {
-			return "", nil, fmt.Errorf("couldn't read source port")
+			return nil, fmt.Errorf("couldn't read source port")
 		}
 
 		destPort := make([]byte, 2)
 
 		if _, err := conn.Read(destPort); err != nil {
-			return "", nil, fmt.Errorf("couldn't read destination port")
+			return nil, fmt.Errorf("couldn't read destination port")
 		}
 
 		protocolBytes := make([]byte, 1)
 
 		if _, err := conn.Read(protocolBytes); err != nil {
-			return "", nil, fmt.Errorf("couldn't read protocol")
+			return nil, fmt.Errorf("couldn't read protocol")
 		}
 
 		var protocol string
 
 		if protocolBytes[0] == TCP {
 			protocol = "tcp"
-		} else if protocolBytes[1] == UDP {
+		} else if protocolBytes[0] == UDP {
 			protocol = "udp"
 		} else {
-			return "", nil, fmt.Errorf("invalid protocol")
+			return nil, fmt.Errorf("invalid protocol")
 		}
 
-		return "proxyStatusRequest", &ProxyStatusRequest{
-			Type:       "proxyStatusRequest",
+		return &ProxyStatusRequest{
 			SourceIP:   ip.String(),
 			SourcePort: binary.BigEndian.Uint16(sourcePort),
 			DestPort:   binary.BigEndian.Uint16(destPort),
@@ -552,7 +539,7 @@ func Unmarshal(conn io.Reader) (string, interface{}, error) {
 		ipVersion := make([]byte, 1)
 
 		if _, err := conn.Read(ipVersion); err != nil {
-			return "", nil, fmt.Errorf("couldn't read ip version")
+			return nil, fmt.Errorf("couldn't read ip version")
 		}
 
 		var ipSize uint8
@@ -562,51 +549,50 @@ func Unmarshal(conn io.Reader) (string, interface{}, error) {
 		} else if ipVersion[0] == 6 {
 			ipSize = IPv6Size
 		} else {
-			return "", nil, fmt.Errorf("invalid IP version recieved")
+			return nil, fmt.Errorf("invalid IP version recieved")
 		}
 
 		ip := make(net.IP, ipSize)
 
 		if _, err := conn.Read(ip); err != nil {
-			return "", nil, fmt.Errorf("couldn't read source IP")
+			return nil, fmt.Errorf("couldn't read source IP")
 		}
 
 		sourcePort := make([]byte, 2)
 
 		if _, err := conn.Read(sourcePort); err != nil {
-			return "", nil, fmt.Errorf("couldn't read source port")
+			return nil, fmt.Errorf("couldn't read source port")
 		}
 
 		destPort := make([]byte, 2)
 
 		if _, err := conn.Read(destPort); err != nil {
-			return "", nil, fmt.Errorf("couldn't read destination port")
+			return nil, fmt.Errorf("couldn't read destination port")
 		}
 
 		protocolBytes := make([]byte, 1)
 
 		if _, err := conn.Read(protocolBytes); err != nil {
-			return "", nil, fmt.Errorf("couldn't read protocol")
+			return nil, fmt.Errorf("couldn't read protocol")
 		}
 
 		var protocol string
 
 		if protocolBytes[0] == TCP {
 			protocol = "tcp"
-		} else if protocolBytes[1] == UDP {
+		} else if protocolBytes[0] == UDP {
 			protocol = "udp"
 		} else {
-			return "", nil, fmt.Errorf("invalid protocol")
+			return nil, fmt.Errorf("invalid protocol")
 		}
 
 		isActive := make([]byte, 1)
 
 		if _, err := conn.Read(isActive); err != nil {
-			return "", nil, fmt.Errorf("couldn't read isActive field")
+			return nil, fmt.Errorf("couldn't read isActive field")
 		}
 
-		return "proxyStatusResponse", &ProxyStatusResponse{
-			Type:       "proxyStatusResponse",
+		return &ProxyStatusResponse{
 			SourceIP:   ip.String(),
 			SourcePort: binary.BigEndian.Uint16(sourcePort),
 			DestPort:   binary.BigEndian.Uint16(destPort),
@@ -614,9 +600,7 @@ func Unmarshal(conn io.Reader) (string, interface{}, error) {
 			IsActive:   isActive[0] == 1,
 		}, nil
 	case ProxyInstanceRequestID:
-		return "proxyInstanceRequest", &ProxyInstanceRequest{
-			Type: "proxyInstanceRequest",
-		}, nil
+		return &ProxyInstanceRequest{}, nil
 	case ProxyInstanceResponseID:
 		proxies := []*ProxyInstance{}
 		delimiter := make([]byte, 1)
@@ -631,13 +615,13 @@ func Unmarshal(conn io.Reader) (string, interface{}, error) {
 					break
 				}
 
-				return "", nil, err
+				return nil, err
 			}
 
 			proxies = append(proxies, proxy)
 
 			if _, err := conn.Read(delimiter); err != nil {
-				return "", nil, fmt.Errorf("couldn't read delimiter")
+				return nil, fmt.Errorf("couldn't read delimiter")
 			}
 
 			if delimiter[0] == '\r' {
@@ -651,15 +635,12 @@ func Unmarshal(conn io.Reader) (string, interface{}, error) {
 			}
 		}
 
-		return "proxyInstanceResponse", &ProxyInstanceResponse{
-			Type:    "proxyInstanceResponse",
+		return &ProxyInstanceResponse{
 			Proxies: proxies,
 		}, errorReturn
 	case ProxyConnectionsRequestID:
-		return "proxyConnectionsRequest", &ProxyConnectionsRequest{
-			Type: "proxyConnectionsRequest",
-		}, nil
+		return &ProxyConnectionsRequest{}, nil
 	}
 
-	return "", nil, fmt.Errorf("couldn't match command ID")
+	return nil, fmt.Errorf("couldn't match command ID")
 }

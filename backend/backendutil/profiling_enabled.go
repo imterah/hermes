@@ -15,7 +15,7 @@ import (
 	"golang.org/x/exp/rand"
 )
 
-func configureAndLaunchBackgroundProfilingTasks() error {
+func ConfigureProfiling() error {
 	profilingMode, err := os.ReadFile("/tmp/hermes.backendlauncher.profilebackends")
 
 	if err != nil && errors.Is(err, os.ErrNotExist) {

@@ -15,8 +15,8 @@ import (
 	"github.com/charmbracelet/log"
 )
 
-func handleCommand(commandType string, command interface{}, sock net.Conn, rtcChan chan interface{}) error {
-	bytes, err := commonbackend.Marshal(commandType, command)
+func handleCommand(command interface{}, sock net.Conn, rtcChan chan interface{}) error {
+	bytes, err := commonbackend.Marshal(command)
 
 	if err != nil {
 		log.Warnf("Failed to marshal message: %s", err.Error())
@@ -32,7 +32,7 @@ func handleCommand(commandType string, command interface{}, sock net.Conn, rtcCh
 		return fmt.Errorf("failed to write message: %s", err.Error())
 	}
 
-	_, data, err := commonbackend.Unmarshal(sock)
+	data, err := commonbackend.Unmarshal(sock)
 
 	if err != nil {
 		log.Warnf("Failed to unmarshal message: %s", err.Error())
@@ -117,9 +117,7 @@ func (runtime *Runtime) goRoutineHandler() error {
 					// To be safe here, we have to use the proper (yet annoying) facilities to prevent cross-talk, since we're in
 					// a goroutine, and can't talk directly. This actually has benefits, as the OuterLoop should exit on its own, if we
 					// encounter a critical error.
-					statusResponse, err := runtime.ProcessCommand(&commonbackend.BackendStatusRequest{
-						Type: "backendStatusRequest",
-					})
+					statusResponse, err := runtime.ProcessCommand(&commonbackend.BackendStatusRequest{})
 
 					if err != nil {
 						log.Warnf("Failed to get response for backend (in backend runtime keep alive): %s", err.Error())
@@ -167,110 +165,14 @@ func (runtime *Runtime) goRoutineHandler() error {
 						continue
 					}
 
-					switch command := messageData.Message.(type) {
-					case *commonbackend.AddProxy:
-						err := handleCommand("addProxy", command, sock, messageData.Channel)
+					err := handleCommand(messageData.Message, sock, messageData.Channel)
 
-						if err != nil {
-							log.Warnf("failed to handle command in backend runtime instance: %s", err.Error())
+					if err != nil {
+						log.Warnf("failed to handle command in backend runtime instance: %s", err.Error())
 
-							if strings.HasPrefix(err.Error(), "failed to write message") {
-								break OuterLoop
-							}
+						if strings.HasPrefix(err.Error(), "failed to write message") {
+							break OuterLoop
 						}
-					case *commonbackend.BackendStatusRequest:
-						err := handleCommand("backendStatusRequest", command, sock, messageData.Channel)
-
-						if err != nil {
-							log.Warnf("failed to handle command in backend runtime instance: %s", err.Error())
-
-							if strings.HasPrefix(err.Error(), "failed to write message") {
-								break OuterLoop
-							}
-						}
-					case *commonbackend.CheckClientParameters:
-						err := handleCommand("checkClientParameters", command, sock, messageData.Channel)
-
-						if err != nil {
-							log.Warnf("failed to handle command in backend runtime instance: %s", err.Error())
-
-							if strings.HasPrefix(err.Error(), "failed to write message") {
-								break OuterLoop
-							}
-						}
-					case *commonbackend.CheckServerParameters:
-						err := handleCommand("checkServerParameters", command, sock, messageData.Channel)
-
-						if err != nil {
-							log.Warnf("failed to handle command in backend runtime instance: %s", err.Error())
-
-							if strings.HasPrefix(err.Error(), "failed to write message") {
-								break OuterLoop
-							}
-						}
-					case *commonbackend.ProxyConnectionsRequest:
-						err := handleCommand("proxyConnectionsRequest", command, sock, messageData.Channel)
-
-						if err != nil {
-							log.Warnf("failed to handle command in backend runtime instance: %s", err.Error())
-
-							if strings.HasPrefix(err.Error(), "failed to write message") {
-								break OuterLoop
-							}
-						}
-					case *commonbackend.ProxyInstanceRequest:
-						err := handleCommand("proxyInstanceRequest", command, sock, messageData.Channel)
-
-						if err != nil {
-							log.Warnf("failed to handle command in backend runtime instance: %s", err.Error())
-
-							if strings.HasPrefix(err.Error(), "failed to write message") {
-								break OuterLoop
-							}
-						}
-					case *commonbackend.ProxyStatusRequest:
-						err := handleCommand("proxyStatusRequest", command, sock, messageData.Channel)
-
-						if err != nil {
-							log.Warnf("failed to handle command in backend runtime instance: %s", err.Error())
-
-							if strings.HasPrefix(err.Error(), "failed to write message") {
-								break OuterLoop
-							}
-						}
-					case *commonbackend.RemoveProxy:
-						err := handleCommand("removeProxy", command, sock, messageData.Channel)
-
-						if err != nil {
-							log.Warnf("failed to handle command in backend runtime instance: %s", err.Error())
-
-							if strings.HasPrefix(err.Error(), "failed to write message") {
-								break OuterLoop
-							}
-						}
-					case *commonbackend.Start:
-						err := handleCommand("start", command, sock, messageData.Channel)
-
-						if err != nil {
-							log.Warnf("failed to handle command in backend runtime instance: %s", err.Error())
-
-							if strings.HasPrefix(err.Error(), "failed to write message") {
-								break OuterLoop
-							}
-						}
-					case *commonbackend.Stop:
-						err := handleCommand("stop", command, sock, messageData.Channel)
-
-						if err != nil {
-							log.Warnf("failed to handle command in backend runtime instance: %s", err.Error())
-
-							if strings.HasPrefix(err.Error(), "failed to write message") {
-								break OuterLoop
-							}
-						}
-					default:
-						log.Warnf("Recieved unknown command type from channel: %T", command)
-						messageData.Channel <- fmt.Errorf("unknown command recieved")
 					}
 
 					runtime.messageBuffer[chanIndex] = nil
