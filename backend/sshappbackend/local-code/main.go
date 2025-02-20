@@ -533,9 +533,46 @@ func (backend *SSHAppBackend) StopProxy(command *commonbackend.RemoveProxy) (boo
 	return false, fmt.Errorf("could not find the proxy")
 }
 
-// TODO: implement!
 func (backend *SSHAppBackend) GetAllClientConnections() []*commonbackend.ProxyClientConnection {
-	return []*commonbackend.ProxyClientConnection{}
+	connections := []*commonbackend.ProxyClientConnection{}
+	informationRequest := &datacommands.ProxyConnectionInformationRequest{}
+
+	for proxyID, tcpProxy := range backend.tcpProxies {
+		informationRequest.ProxyID = proxyID
+
+		for connectionID := range tcpProxy.connections {
+			informationRequest.ConnectionID = connectionID
+
+			proxyStatusRaw, err := backend.SendNonCriticalMessage(informationRequest)
+
+			if err != nil {
+				log.Warnf("Failed to get connection information for Proxy ID: %d, Connection ID: %d: %s", proxyID, connectionID, err.Error())
+				return connections
+			}
+
+			connectionStatus, ok := proxyStatusRaw.(*datacommands.ProxyConnectionInformationResponse)
+
+			if !ok {
+				log.Warn("Failed to get connection response: typecast failed")
+				return connections
+			}
+
+			if !connectionStatus.Exists {
+				log.Warnf("Connection with proxy ID: %d, Connection ID: %d is reported to not exist!", proxyID, connectionID)
+				tcpProxy.connections[connectionID].Close()
+			}
+
+			connections = append(connections, &commonbackend.ProxyClientConnection{
+				SourceIP:   tcpProxy.proxyInformation.SourceIP,
+				SourcePort: tcpProxy.proxyInformation.SourcePort,
+				DestPort:   tcpProxy.proxyInformation.DestPort,
+				ClientIP:   connectionStatus.ClientIP,
+				ClientPort: connectionStatus.ClientPort,
+			})
+		}
+	}
+
+	return connections
 }
 
 // We don't have any parameter limitations, so we should be good.
