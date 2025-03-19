@@ -53,24 +53,35 @@ type SSHListener struct {
 	Listeners  []net.Listener
 }
 
+type SSHBackendData struct {
+	IP              string   `json:"ip" validate:"required"`
+	Port            uint16   `json:"port" validate:"required"`
+	Username        string   `json:"username" validate:"required"`
+	PrivateKey      string   `json:"privateKey" validate:"required"`
+	DisablePIDCheck bool     `json:"disablePIDCheck"`
+	ListenOnIPs     []string `json:"listenOnIPs"`
+}
+
 type SSHBackend struct {
 	config         *SSHBackendData
 	conn           *ssh.Client
 	clients        []*commonbackend.ProxyClientConnection
 	proxies        []*SSHListener
 	arrayPropMutex sync.Mutex
-}
-
-type SSHBackendData struct {
-	IP          string   `json:"ip" validate:"required"`
-	Port        uint16   `json:"port" validate:"required"`
-	Username    string   `json:"username" validate:"required"`
-	PrivateKey  string   `json:"privateKey" validate:"required"`
-	ListenOnIPs []string `json:"listenOnIPs"`
+	pid            int
+	isReady        bool
+	inReinitLoop   bool
 }
 
 func (backend *SSHBackend) StartBackend(bytes []byte) (bool, error) {
 	log.Info("SSHBackend is initializing...")
+
+	if backend.inReinitLoop {
+		for !backend.isReady {
+			time.Sleep(100 * time.Millisecond)
+		}
+	}
+
 	var backendData SSHBackendData
 
 	if err := json.Unmarshal(bytes, &backendData); err != nil {
@@ -126,6 +137,42 @@ func (backend *SSHBackend) StartBackend(bytes []byte) (bool, error) {
 
 	client := ssh.NewClient(c, chans, reqs)
 	backend.conn = client
+
+	if !backendData.DisablePIDCheck {
+		if backend.pid != 0 {
+			session, err := client.NewSession()
+
+			if err != nil {
+				return false, err
+			}
+
+			err = session.Run(fmt.Sprintf("kill -9 %d", backend.pid))
+
+			if err != nil {
+				log.Warnf("Failed to kill process: %s", err.Error())
+			}
+		}
+
+		session, err := client.NewSession()
+
+		if err != nil {
+			return false, err
+		}
+
+		// Get the parent PID of the shell so we can kill it if we disconnect
+		output, err := session.Output("ps --no-headers -fp $$ | awk '{print $3}'")
+
+		if err != nil {
+			return false, err
+		}
+
+		// Strip the new line and convert to int
+		backend.pid, err = strconv.Atoi(string(output)[:len(output)-1])
+
+		if err != nil {
+			return false, err
+		}
+	}
 
 	go backend.backendDisconnectHandler()
 	go backend.backendKeepaliveHandler()
@@ -404,6 +451,9 @@ func (backend *SSHBackend) backendDisconnectHandler() {
 			backend.conn.Wait()
 			backend.conn.Close()
 
+			backend.isReady = false
+			backend.inReinitLoop = true
+
 			log.Info("Disconnected from the remote SSH server. Attempting to reconnect in 5 seconds...")
 		} else {
 			log.Info("Retrying reconnection in 5 seconds...")
@@ -458,6 +508,46 @@ func (backend *SSHBackend) backendDisconnectHandler() {
 
 		client := ssh.NewClient(c, chans, reqs)
 		backend.conn = client
+
+		if !backend.config.DisablePIDCheck {
+			if backend.pid != 0 {
+				session, err := client.NewSession()
+
+				if err != nil {
+					log.Warnf("Failed to create SSH command session: %s", err.Error())
+					return
+				}
+
+				err = session.Run(fmt.Sprintf("kill -9 %d", backend.pid))
+
+				if err != nil {
+					log.Warnf("Failed to kill process: %s", err.Error())
+				}
+			}
+
+			session, err := client.NewSession()
+
+			if err != nil {
+				log.Warnf("Failed to create SSH command session: %s", err.Error())
+				return
+			}
+
+			// Get the parent PID of the shell so we can kill it if we disconnect
+			output, err := session.Output("ps --no-headers -fp $$ | awk '{print $3}'")
+
+			if err != nil {
+				log.Warnf("Failed to execute command to fetch PID: %s", err.Error())
+				return
+			}
+
+			// Strip the new line and convert to int
+			backend.pid, err = strconv.Atoi(string(output)[:len(output)-1])
+
+			if err != nil {
+				log.Warnf("Failed to parse PID: %s", err.Error())
+				return
+			}
+		}
 
 		go backend.backendKeepaliveHandler()
 
