@@ -42,7 +42,7 @@ type writeLogger struct {
 func (writer writeLogger) Write(p []byte) (n int, err error) {
 	logSplit := strings.Split(string(p), "\n")
 
-	if isDevelopmentMode {
+	if shouldLog {
 		for _, logLine := range logSplit {
 			if logLine == "" {
 				continue

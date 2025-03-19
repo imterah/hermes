@@ -6,10 +6,10 @@ var (
 	AvailableBackends []*Backend
 	RunningBackends   map[uint]*Runtime
 	TempDir           string
-	isDevelopmentMode bool
+	shouldLog         bool
 )
 
 func init() {
 	RunningBackends = make(map[uint]*Runtime)
-	isDevelopmentMode = os.Getenv("HERMES_DEVELOPMENT_MODE") != ""
+	shouldLog = os.Getenv("HERMES_DEVELOPMENT_MODE") != "" || os.Getenv("HERMES_BACKEND_LOGGING_ENABLED") != "" || os.Getenv("HERMES_LOG_LEVEL") == "debug"
 }
