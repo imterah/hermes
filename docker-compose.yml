@@ -6,27 +6,12 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USERNAME}:${POSTGRES_PASSWORD}@nextnet-postgres:5432/${POSTGRES_DB}?schema=nextnet
       HERMES_POSTGRES_DSN: postgres://${POSTGRES_USERNAME}:${POSTGRES_PASSWORD}@nextnet-postgres:5432/${POSTGRES_DB}
+      HERMES_JWT_SECRET: ${JWT_SECRET}
       HERMES_DATABASE_BACKEND: postgresql
     depends_on:
       - db
     ports:
       - 3000:3000
-
-  # WARN: The LOM is deprecated and likely broken currently.
-  #
-  # NOTE: For this to work correctly, the nextnet-api must be version > 0.1.1
-  # or have a version with backported username support, incl. logins
-  lom:
-    image: ghcr.io/imterah/hermes-lom:latest
-    container_name: hermes-lom
-    restart: always
-    ports:
-      - 2222:2222
-    depends_on:
-      - api
-    volumes:
-      - ssh_key_data:/app/keys
-
   db:
     image: postgres:17.2
     container_name: nextnet-postgres
@@ -37,7 +22,6 @@ services:
       POSTGRES_USER: ${POSTGRES_USERNAME}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-
 volumes:
   postgres_data:
   ssh_key_data:

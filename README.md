@@ -32,7 +32,7 @@
 
 1. Copy and change the default password (or username & db name too) from the template file `prod-docker.env`:
   ```bash
-  sed "s/POSTGRES_PASSWORD=hermes/POSTGRES_PASSWORD=$(head -c 500 /dev/random | sha512sum | cut -d " " -f 1)/g" prod-docker.env > .env
+  sed -e "s/POSTGRES_PASSWORD=hermes/POSTGRES_PASSWORD=$(head -c 500 /dev/random | sha512sum | cut -d " " -f 1)/g" -e "s/JWT_SECRET=hermes/JWT_SECRET=$(head -c 500 /dev/random | sha512sum | cut -d " " -f 1)/g" prod-docker.env > .env
   ```
 
 2. Build the docker stack: `docker compose --env-file .env up -d`
