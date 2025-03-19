@@ -3,7 +3,6 @@
 }: pkgs.mkShell {
   buildInputs = with pkgs; [
     # api/
-    nodejs
     go
     gopls
   ];
