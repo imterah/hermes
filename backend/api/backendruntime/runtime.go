@@ -15,6 +15,9 @@ import (
 	"github.com/charmbracelet/log"
 )
 
+// TODO TODO TODO(imterah):
+// This code is a mess. This NEEDS to be rearchitected and refactored to work better. Or at the very least, this code needs to be documented heavily.
+
 func handleCommand(command interface{}, sock net.Conn, rtcChan chan interface{}) error {
 	bytes, err := commonbackend.Marshal(command)
 
@@ -160,6 +163,9 @@ func (runtime *Runtime) goRoutineHandler() error {
 
 		OuterLoop:
 			for {
+				_ = <-runtime.startProcessingNotification
+				runtime.isRuntimeCurrentlyProcessing = true
+
 				for chanIndex, messageData := range runtime.messageBuffer {
 					if messageData == nil {
 						continue
@@ -177,6 +183,8 @@ func (runtime *Runtime) goRoutineHandler() error {
 
 					runtime.messageBuffer[chanIndex] = nil
 				}
+
+				runtime.isRuntimeCurrentlyProcessing = false
 			}
 
 			sock.Close()
@@ -235,6 +243,7 @@ func (runtime *Runtime) Start() error {
 	runtime.messageBuffer = make([]*messageForBuf, 10)
 	runtime.messageBufferLock = sync.Mutex{}
 
+	runtime.startProcessingNotification = make(chan bool)
 	runtime.processRestartNotification = make(chan bool, 1)
 
 	runtime.logger = &writeLogger{
@@ -320,6 +329,10 @@ SchedulingLoop:
 		time.Sleep(100 * time.Millisecond)
 
 		schedulingAttempts++
+	}
+
+	if !runtime.isRuntimeCurrentlyProcessing {
+		runtime.startProcessingNotification <- true
 	}
 
 	// Fetch response and close Channel

@@ -16,15 +16,18 @@ type Backend struct {
 
 type messageForBuf struct {
 	Channel chan interface{}
+	// TODO(imterah): could this be refactored to just be a []byte instead? Look into this
 	Message interface{}
 }
 
 type Runtime struct {
-	isRuntimeRunning           bool
-	logger                     *writeLogger
-	currentProcess             *exec.Cmd
-	currentListener            net.Listener
-	processRestartNotification chan bool
+	isRuntimeRunning             bool
+	isRuntimeCurrentlyProcessing bool
+	startProcessingNotification  chan bool
+	logger                       *writeLogger
+	currentProcess               *exec.Cmd
+	currentListener              net.Listener
+	processRestartNotification   chan bool
 
 	messageBufferLock sync.Mutex
 	messageBuffer     []*messageForBuf
