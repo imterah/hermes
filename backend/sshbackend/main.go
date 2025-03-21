@@ -19,6 +19,8 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
+var validatorInstance *validator.Validate
+
 type ConnWithTimeout struct {
 	net.Conn
 	ReadTimeout  time.Duration
@@ -76,6 +78,10 @@ type SSHBackend struct {
 func (backend *SSHBackend) StartBackend(bytes []byte) (bool, error) {
 	log.Info("SSHBackend is initializing...")
 
+	if validatorInstance == nil {
+		validatorInstance = validator.New()
+	}
+
 	if backend.inReinitLoop {
 		for !backend.isReady {
 			time.Sleep(100 * time.Millisecond)
@@ -88,7 +94,7 @@ func (backend *SSHBackend) StartBackend(bytes []byte) (bool, error) {
 		return false, err
 	}
 
-	if err := validator.New().Struct(&backendData); err != nil {
+	if err := validatorInstance.Struct(&backendData); err != nil {
 		return false, err
 	}
 
@@ -411,6 +417,10 @@ func (backend *SSHBackend) CheckParametersForConnections(clientParameters *commo
 func (backend *SSHBackend) CheckParametersForBackend(arguments []byte) *commonbackend.CheckParametersResponse {
 	var backendData SSHBackendData
 
+	if validatorInstance == nil {
+		validatorInstance = validator.New()
+	}
+
 	if err := json.Unmarshal(arguments, &backendData); err != nil {
 		return &commonbackend.CheckParametersResponse{
 			IsValid: false,
@@ -418,7 +428,7 @@ func (backend *SSHBackend) CheckParametersForBackend(arguments []byte) *commonba
 		}
 	}
 
-	if err := validator.New().Struct(&backendData); err != nil {
+	if err := validatorInstance.Struct(&backendData); err != nil {
 		return &commonbackend.CheckParametersResponse{
 			IsValid: false,
 			Message: fmt.Sprintf("failed validation of parameters: %s", err.Error()),

@@ -26,6 +26,8 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
+var validatorInstance *validator.Validate
+
 type TCPProxy struct {
 	proxyInformation *commonbackend.AddProxy
 	connections      map[uint16]net.Conn
@@ -62,6 +64,11 @@ type SSHAppBackend struct {
 
 func (backend *SSHAppBackend) StartBackend(configBytes []byte) (bool, error) {
 	log.Info("SSHAppBackend is initializing...")
+
+	if validatorInstance == nil {
+		validatorInstance = validator.New()
+	}
+
 	backend.globalNonCriticalMessageChan = make(chan interface{})
 	backend.tcpProxies = map[uint16]*TCPProxy{}
 	backend.udpProxies = map[uint16]*UDPProxy{}
@@ -72,7 +79,7 @@ func (backend *SSHAppBackend) StartBackend(configBytes []byte) (bool, error) {
 		return false, err
 	}
 
-	if err := validator.New().Struct(&backendData); err != nil {
+	if err := validatorInstance.Struct(&backendData); err != nil {
 		return false, err
 	}
 
@@ -585,6 +592,10 @@ func (backend *SSHAppBackend) CheckParametersForConnections(clientParameters *co
 func (backend *SSHAppBackend) CheckParametersForBackend(arguments []byte) *commonbackend.CheckParametersResponse {
 	var backendData SSHAppBackendData
 
+	if validatorInstance == nil {
+		validatorInstance = validator.New()
+	}
+
 	if err := json.Unmarshal(arguments, &backendData); err != nil {
 		return &commonbackend.CheckParametersResponse{
 			IsValid: false,
@@ -592,7 +603,7 @@ func (backend *SSHAppBackend) CheckParametersForBackend(arguments []byte) *commo
 		}
 	}
 
-	if err := validator.New().Struct(&backendData); err != nil {
+	if err := validatorInstance.Struct(&backendData); err != nil {
 		return &commonbackend.CheckParametersResponse{
 			IsValid: false,
 			Message: fmt.Sprintf("failed validation of parameters: %s", err.Error()),
