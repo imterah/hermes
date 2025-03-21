@@ -7,12 +7,11 @@ import (
 	"strings"
 
 	"git.terah.dev/imterah/hermes/backend/api/backendruntime"
-	"git.terah.dev/imterah/hermes/backend/api/dbcore"
-	"git.terah.dev/imterah/hermes/backend/api/jwtcore"
+	"git.terah.dev/imterah/hermes/backend/api/db"
 	"git.terah.dev/imterah/hermes/backend/api/permissions"
+	"git.terah.dev/imterah/hermes/backend/api/state"
 	"github.com/charmbracelet/log"
 	"github.com/gin-gonic/gin"
-	"github.com/go-playground/validator/v10"
 )
 
 type BackendLookupRequest struct {
@@ -38,95 +37,80 @@ type LookupResponse struct {
 	Data    []*SanitizedBackend `json:"data"`
 }
 
-func LookupBackend(c *gin.Context) {
-	var req BackendLookupRequest
+func SetupLookupBackend(state *state.State) {
+	state.Engine.POST("/api/v1/backends/lookup", func(c *gin.Context) {
+		var req BackendLookupRequest
 
-	if err := c.BindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": fmt.Sprintf("Failed to parse body: %s", err.Error()),
-		})
-
-		return
-	}
-
-	if err := validator.New().Struct(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": fmt.Sprintf("Failed to validate body: %s", err.Error()),
-		})
-
-		return
-	}
-
-	user, err := jwtcore.GetUserFromJWT(req.Token)
-
-	if err != nil {
-		if err.Error() == "token is expired" || err.Error() == "user does not exist" {
-			c.JSON(http.StatusForbidden, gin.H{
-				"error": err.Error(),
-			})
-
-			return
-		} else {
-			log.Warnf("Failed to get user from the provided JWT token: %s", err.Error())
-
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": "Failed to parse token",
+		if err := c.BindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": fmt.Sprintf("Failed to parse body: %s", err.Error()),
 			})
 
 			return
 		}
-	}
 
-	if !permissions.UserHasPermission(user, "backends.visible") {
-		c.JSON(http.StatusForbidden, gin.H{
-			"error": "Missing permissions",
-		})
+		if err := state.Validator.Struct(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": fmt.Sprintf("Failed to validate body: %s", err.Error()),
+			})
 
-		return
-	}
+			return
+		}
 
-	backends := []dbcore.Backend{}
-	queryString := []string{}
-	queryParameters := []interface{}{}
+		user, err := state.JWT.GetUserFromJWT(req.Token)
 
-	if req.BackendID != nil {
-		queryString = append(queryString, "id = ?")
-		queryParameters = append(queryParameters, req.BackendID)
-	}
+		if err != nil {
+			if err.Error() == "token is expired" || err.Error() == "user does not exist" {
+				c.JSON(http.StatusForbidden, gin.H{
+					"error": err.Error(),
+				})
 
-	if req.Name != nil {
-		queryString = append(queryString, "name = ?")
-		queryParameters = append(queryParameters, req.Name)
-	}
+				return
+			} else {
+				log.Warnf("Failed to get user from the provided JWT token: %s", err.Error())
 
-	if req.Description != nil {
-		queryString = append(queryString, "description = ?")
-		queryParameters = append(queryParameters, req.Description)
-	}
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "Failed to parse token",
+				})
 
-	if req.Backend != nil {
-		queryString = append(queryString, "is_bot = ?")
-		queryParameters = append(queryParameters, req.Backend)
-	}
+				return
+			}
+		}
 
-	if err := dbcore.DB.Where(strings.Join(queryString, " AND "), queryParameters...).Find(&backends).Error; err != nil {
-		log.Warnf("Failed to get backends: %s", err.Error())
+		if !permissions.UserHasPermission(user, "backends.visible") {
+			c.JSON(http.StatusForbidden, gin.H{
+				"error": "Missing permissions",
+			})
 
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to get backends",
-		})
+			return
+		}
 
-		return
-	}
+		backends := []db.Backend{}
+		queryString := []string{}
+		queryParameters := []interface{}{}
 
-	sanitizedBackends := make([]*SanitizedBackend, len(backends))
-	hasSecretVisibility := permissions.UserHasPermission(user, "backends.secretVis")
+		if req.BackendID != nil {
+			queryString = append(queryString, "id = ?")
+			queryParameters = append(queryParameters, req.BackendID)
+		}
 
-	for backendIndex, backend := range backends {
-		foundBackend, ok := backendruntime.RunningBackends[backend.ID]
+		if req.Name != nil {
+			queryString = append(queryString, "name = ?")
+			queryParameters = append(queryParameters, req.Name)
+		}
 
-		if !ok {
-			log.Warnf("Failed to get backend #%d controller", backend.ID)
+		if req.Description != nil {
+			queryString = append(queryString, "description = ?")
+			queryParameters = append(queryParameters, req.Description)
+		}
+
+		if req.Backend != nil {
+			queryString = append(queryString, "is_bot = ?")
+			queryParameters = append(queryParameters, req.Backend)
+		}
+
+		if err := state.DB.DB.Where(strings.Join(queryString, " AND "), queryParameters...).Find(&backends).Error; err != nil {
+			log.Warnf("Failed to get backends: %s", err.Error())
 
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": "Failed to get backends",
@@ -135,29 +119,46 @@ func LookupBackend(c *gin.Context) {
 			return
 		}
 
-		sanitizedBackends[backendIndex] = &SanitizedBackend{
-			BackendID:   backend.ID,
-			OwnerID:     backend.UserID,
-			Name:        backend.Name,
-			Description: backend.Description,
-			Backend:     backend.Backend,
-			Logs:        foundBackend.Logs,
-		}
+		sanitizedBackends := make([]*SanitizedBackend, len(backends))
+		hasSecretVisibility := permissions.UserHasPermission(user, "backends.secretVis")
 
-		if backend.UserID == user.ID || hasSecretVisibility {
-			backendParametersBytes, err := base64.StdEncoding.DecodeString(backend.BackendParameters)
+		for backendIndex, backend := range backends {
+			foundBackend, ok := backendruntime.RunningBackends[backend.ID]
 
-			if err != nil {
-				log.Warnf("Failed to decode base64 backend parameters: %s", err.Error())
+			if !ok {
+				log.Warnf("Failed to get backend #%d controller", backend.ID)
+
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "Failed to get backends",
+				})
+
+				return
 			}
 
-			backendParameters := string(backendParametersBytes)
-			sanitizedBackends[backendIndex].BackendParameters = &backendParameters
-		}
-	}
+			sanitizedBackends[backendIndex] = &SanitizedBackend{
+				BackendID:   backend.ID,
+				OwnerID:     backend.UserID,
+				Name:        backend.Name,
+				Description: backend.Description,
+				Backend:     backend.Backend,
+				Logs:        foundBackend.Logs,
+			}
 
-	c.JSON(http.StatusOK, &LookupResponse{
-		Success: true,
-		Data:    sanitizedBackends,
+			if backend.UserID == user.ID || hasSecretVisibility {
+				backendParametersBytes, err := base64.StdEncoding.DecodeString(backend.BackendParameters)
+
+				if err != nil {
+					log.Warnf("Failed to decode base64 backend parameters: %s", err.Error())
+				}
+
+				backendParameters := string(backendParametersBytes)
+				sanitizedBackends[backendIndex].BackendParameters = &backendParameters
+			}
+		}
+
+		c.JSON(http.StatusOK, &LookupResponse{
+			Success: true,
+			Data:    sanitizedBackends,
+		})
 	})
 }

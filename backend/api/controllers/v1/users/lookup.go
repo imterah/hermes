@@ -5,12 +5,11 @@ import (
 	"net/http"
 	"strings"
 
-	"git.terah.dev/imterah/hermes/backend/api/dbcore"
-	"git.terah.dev/imterah/hermes/backend/api/jwtcore"
+	"git.terah.dev/imterah/hermes/backend/api/db"
 	"git.terah.dev/imterah/hermes/backend/api/permissions"
+	"git.terah.dev/imterah/hermes/backend/api/state"
 	"github.com/charmbracelet/log"
 	"github.com/gin-gonic/gin"
-	"github.com/go-playground/validator/v10"
 )
 
 type UserLookupRequest struct {
@@ -35,102 +34,104 @@ type LookupResponse struct {
 	Data    []*SanitizedUsers `json:"data"`
 }
 
-func LookupUser(c *gin.Context) {
-	var req UserLookupRequest
+func SetupLookupUser(state *state.State) {
+	state.Engine.POST("/api/v1/users/lookup", func(c *gin.Context) {
+		var req UserLookupRequest
 
-	if err := c.BindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": fmt.Sprintf("Failed to parse body: %s", err.Error()),
-		})
-
-		return
-	}
-
-	if err := validator.New().Struct(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": fmt.Sprintf("Failed to validate body: %s", err.Error()),
-		})
-
-		return
-	}
-
-	user, err := jwtcore.GetUserFromJWT(req.Token)
-
-	if err != nil {
-		if err.Error() == "token is expired" || err.Error() == "user does not exist" {
-			c.JSON(http.StatusForbidden, gin.H{
-				"error": err.Error(),
+		if err := c.BindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": fmt.Sprintf("Failed to parse body: %s", err.Error()),
 			})
 
 			return
-		} else {
-			log.Warnf("Failed to get user from the provided JWT token: %s", err.Error())
+		}
+
+		if err := state.Validator.Struct(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": fmt.Sprintf("Failed to validate body: %s", err.Error()),
+			})
+
+			return
+		}
+
+		user, err := state.JWT.GetUserFromJWT(req.Token)
+
+		if err != nil {
+			if err.Error() == "token is expired" || err.Error() == "user does not exist" {
+				c.JSON(http.StatusForbidden, gin.H{
+					"error": err.Error(),
+				})
+
+				return
+			} else {
+				log.Warnf("Failed to get user from the provided JWT token: %s", err.Error())
+
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "Failed to parse token",
+				})
+
+				return
+			}
+		}
+
+		users := []db.User{}
+		queryString := []string{}
+		queryParameters := []interface{}{}
+
+		if !permissions.UserHasPermission(user, "users.lookup") {
+			queryString = append(queryString, "id = ?")
+			queryParameters = append(queryParameters, user.ID)
+		} else if permissions.UserHasPermission(user, "users.lookup") && req.UID != nil {
+			queryString = append(queryString, "id = ?")
+			queryParameters = append(queryParameters, req.UID)
+		}
+
+		if req.Name != nil {
+			queryString = append(queryString, "name = ?")
+			queryParameters = append(queryParameters, req.Name)
+		}
+
+		if req.Email != nil {
+			queryString = append(queryString, "email = ?")
+			queryParameters = append(queryParameters, req.Email)
+		}
+
+		if req.IsBot != nil {
+			queryString = append(queryString, "is_bot = ?")
+			queryParameters = append(queryParameters, req.IsBot)
+		}
+
+		if err := state.DB.DB.Where(strings.Join(queryString, " AND "), queryParameters...).Find(&users).Error; err != nil {
+			log.Warnf("Failed to get users: %s", err.Error())
 
 			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": "Failed to parse token",
+				"error": "Failed to get users",
 			})
 
 			return
 		}
-	}
 
-	users := []dbcore.User{}
-	queryString := []string{}
-	queryParameters := []interface{}{}
+		sanitizedUsers := make([]*SanitizedUsers, len(users))
 
-	if !permissions.UserHasPermission(user, "users.lookup") {
-		queryString = append(queryString, "id = ?")
-		queryParameters = append(queryParameters, user.ID)
-	} else if permissions.UserHasPermission(user, "users.lookup") && req.UID != nil {
-		queryString = append(queryString, "id = ?")
-		queryParameters = append(queryParameters, req.UID)
-	}
+		for userIndex, user := range users {
+			isBot := false
 
-	if req.Name != nil {
-		queryString = append(queryString, "name = ?")
-		queryParameters = append(queryParameters, req.Name)
-	}
+			if user.IsBot != nil {
+				isBot = *user.IsBot
+			}
 
-	if req.Email != nil {
-		queryString = append(queryString, "email = ?")
-		queryParameters = append(queryParameters, req.Email)
-	}
+			sanitizedUsers[userIndex] = &SanitizedUsers{
+				UID:      user.ID,
+				Name:     user.Name,
+				Email:    user.Email,
+				Username: user.Username,
+				IsBot:    isBot,
+			}
+		}
 
-	if req.IsBot != nil {
-		queryString = append(queryString, "is_bot = ?")
-		queryParameters = append(queryParameters, req.IsBot)
-	}
-
-	if err := dbcore.DB.Where(strings.Join(queryString, " AND "), queryParameters...).Find(&users).Error; err != nil {
-		log.Warnf("Failed to get users: %s", err.Error())
-
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to get users",
+		c.JSON(http.StatusOK, &LookupResponse{
+			Success: true,
+			Data:    sanitizedUsers,
 		})
-
-		return
-	}
-
-	sanitizedUsers := make([]*SanitizedUsers, len(users))
-
-	for userIndex, user := range users {
-		isBot := false
-
-		if user.IsBot != nil {
-			isBot = *user.IsBot
-		}
-
-		sanitizedUsers[userIndex] = &SanitizedUsers{
-			UID:      user.ID,
-			Name:     user.Name,
-			Email:    user.Email,
-			Username: user.Username,
-			IsBot:    isBot,
-		}
-	}
-
-	c.JSON(http.StatusOK, &LookupResponse{
-		Success: true,
-		Data:    sanitizedUsers,
 	})
 }

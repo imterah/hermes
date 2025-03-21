@@ -9,18 +9,19 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"git.terah.dev/imterah/hermes/backend/api/backendruntime"
 	"git.terah.dev/imterah/hermes/backend/api/controllers/v1/backends"
 	"git.terah.dev/imterah/hermes/backend/api/controllers/v1/proxies"
 	"git.terah.dev/imterah/hermes/backend/api/controllers/v1/users"
-	"git.terah.dev/imterah/hermes/backend/api/dbcore"
-	"git.terah.dev/imterah/hermes/backend/api/jwtcore"
+	"git.terah.dev/imterah/hermes/backend/api/db"
+	"git.terah.dev/imterah/hermes/backend/api/jwt"
+	"git.terah.dev/imterah/hermes/backend/api/state"
 	"git.terah.dev/imterah/hermes/backend/commonbackend"
 	"github.com/charmbracelet/log"
 	"github.com/gin-gonic/gin"
 	"github.com/urfave/cli/v2"
-	"gorm.io/gorm"
 )
 
 func apiEntrypoint(cCtx *cli.Context) error {
@@ -34,7 +35,26 @@ func apiEntrypoint(cCtx *cli.Context) error {
 	log.Info("Hermes is initializing...")
 	log.Debug("Initializing database and opening it...")
 
-	err := dbcore.InitializeDatabase(&gorm.Config{})
+	databaseBackendName := os.Getenv("HERMES_DATABASE_BACKEND")
+	var databaseBackendParams string
+
+	if databaseBackendName == "sqlite" {
+		databaseBackendParams = os.Getenv("HERMES_SQLITE_FILEPATH")
+
+		if databaseBackendParams == "" {
+			log.Fatal("HERMES_SQLITE_FILEPATH is not set")
+		}
+	}
+
+	if databaseBackendName == "postgres" {
+		databaseBackendParams = os.Getenv("HERMES_POSTGRES_DSN")
+
+		if databaseBackendParams == "" {
+			log.Fatal("HERMES_POSTGRES_DSN is not set")
+		}
+	}
+
+	dbInstance, err := db.New(databaseBackendName, databaseBackendParams)
 
 	if err != nil {
 		log.Fatalf("Failed to initialize database: %s", err)
@@ -42,15 +62,37 @@ func apiEntrypoint(cCtx *cli.Context) error {
 
 	log.Debug("Running database migrations...")
 
-	if err := dbcore.DoDatabaseMigrations(dbcore.DB); err != nil {
+	if err := dbInstance.DoMigrations(); err != nil {
 		return fmt.Errorf("Failed to run database migrations: %s", err)
 	}
 
 	log.Debug("Initializing the JWT subsystem...")
 
-	if err := jwtcore.SetupJWT(); err != nil {
-		return fmt.Errorf("Failed to initialize the JWT subsystem: %s", err.Error())
+	jwtDataString := os.Getenv("HERMES_JWT_SECRET")
+	var jwtKey []byte
+	var jwtValidityTimeDuration time.Duration
+
+	if jwtDataString == "" {
+		log.Fatalf("HERMES_JWT_SECRET is not set")
 	}
+
+	if os.Getenv("HERMES_JWT_BASE64_ENCODED") != "" {
+		jwtKey, err = base64.StdEncoding.DecodeString(jwtDataString)
+
+		if err != nil {
+			log.Fatalf("Failed to decode base64 JWT: %s", err.Error())
+		}
+	} else {
+		jwtKey = []byte(jwtDataString)
+	}
+
+	if developmentMode {
+		jwtValidityTimeDuration = jwt.DevelopmentModeTimings
+	} else {
+		jwtValidityTimeDuration = jwt.NormalModeTimings
+	}
+
+	jwtInstance := jwt.New(jwtKey, dbInstance, jwtValidityTimeDuration)
 
 	log.Debug("Initializing the backend subsystem...")
 
@@ -76,9 +118,9 @@ func apiEntrypoint(cCtx *cli.Context) error {
 
 	log.Debug("Enumerating backends...")
 
-	backendList := []dbcore.Backend{}
+	backendList := []db.Backend{}
 
-	if err := dbcore.DB.Find(&backendList).Error; err != nil {
+	if err := dbInstance.DB.Find(&backendList).Error; err != nil {
 		return fmt.Errorf("Failed to enumerate backends: %s", err.Error())
 	}
 
@@ -141,9 +183,9 @@ func apiEntrypoint(cCtx *cli.Context) error {
 
 			log.Warnf("Backend #%d has reinitialized! Starting up auto-starting proxies...", backend.ID)
 
-			autoStartProxies := []dbcore.Proxy{}
+			autoStartProxies := []db.Proxy{}
 
-			if err := dbcore.DB.Where("backend_id = ? AND auto_start = true", backend.ID).Find(&autoStartProxies).Error; err != nil {
+			if err := dbInstance.DB.Where("backend_id = ? AND auto_start = true", backend.ID).Find(&autoStartProxies).Error; err != nil {
 				log.Errorf("Failed to query proxies to autostart: %s", err.Error())
 				return
 			}
@@ -243,9 +285,9 @@ func apiEntrypoint(cCtx *cli.Context) error {
 
 		log.Infof("Successfully initialized backend #%d", backend.ID)
 
-		autoStartProxies := []dbcore.Proxy{}
+		autoStartProxies := []db.Proxy{}
 
-		if err := dbcore.DB.Where("backend_id = ? AND auto_start = true", backend.ID).Find(&autoStartProxies).Error; err != nil {
+		if err := dbInstance.DB.Where("backend_id = ? AND auto_start = true", backend.ID).Find(&autoStartProxies).Error; err != nil {
 			log.Errorf("Failed to query proxies to autostart: %s", err.Error())
 			continue
 		}
@@ -309,23 +351,25 @@ func apiEntrypoint(cCtx *cli.Context) error {
 		engine.SetTrustedProxies(nil)
 	}
 
+	state := state.New(dbInstance, jwtInstance, engine)
+
 	// Initialize routes
-	engine.POST("/api/v1/users/create", users.CreateUser)
-	engine.POST("/api/v1/users/login", users.LoginUser)
-	engine.POST("/api/v1/users/refresh", users.RefreshUserToken)
-	engine.POST("/api/v1/users/remove", users.RemoveUser)
-	engine.POST("/api/v1/users/lookup", users.LookupUser)
+	users.SetupCreateUser(state)
+	users.SetupLoginUser(state)
+	users.SetupRefreshUserToken(state)
+	users.SetupRemoveUser(state)
+	users.SetupLookupUser(state)
 
-	engine.POST("/api/v1/backends/create", backends.CreateBackend)
-	engine.POST("/api/v1/backends/remove", backends.RemoveBackend)
-	engine.POST("/api/v1/backends/lookup", backends.LookupBackend)
+	backends.SetupCreateBackend(state)
+	backends.SetupRemoveBackend(state)
+	backends.SetupLookupBackend(state)
 
-	engine.POST("/api/v1/forward/create", proxies.CreateProxy)
-	engine.POST("/api/v1/forward/lookup", proxies.LookupProxy)
-	engine.POST("/api/v1/forward/remove", proxies.RemoveProxy)
-	engine.POST("/api/v1/forward/start", proxies.StartProxy)
-	engine.POST("/api/v1/forward/stop", proxies.StopProxy)
-	engine.POST("/api/v1/forward/connections", proxies.GetConnections)
+	proxies.SetupCreateProxy(state)
+	proxies.SetupRemoveProxy(state)
+	proxies.SetupLookupProxy(state)
+	proxies.SetupStartProxy(state)
+	proxies.SetupStopProxy(state)
+	proxies.SetupGetConnections(state)
 
 	log.Infof("Listening on '%s'", listeningAddress)
 	err = engine.Run(listeningAddress)
@@ -362,22 +406,6 @@ func main() {
 	app := &cli.App{
 		Name:  "hermes",
 		Usage: "port forwarding across boundaries",
-		Commands: []*cli.Command{
-			{
-				Name:    "import",
-				Usage:   "imports from legacy NextNet/Hermes source",
-				Aliases: []string{"i"},
-				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:     "backup-path",
-						Aliases:  []string{"bp"},
-						Usage:    "path to the backup file",
-						Required: true,
-					},
-				},
-				Action: backupRestoreEntrypoint,
-			},
-		},
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:     "backends-path",

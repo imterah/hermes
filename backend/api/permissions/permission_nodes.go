@@ -1,6 +1,6 @@
 package permissions
 
-import "git.terah.dev/imterah/hermes/backend/api/dbcore"
+import "git.terah.dev/imterah/hermes/backend/api/db"
 
 var DefaultPermissionNodes []string = []string{
 	"routes.add",
@@ -27,7 +27,7 @@ var DefaultPermissionNodes []string = []string{
 	"users.edit",
 }
 
-func UserHasPermission(user *dbcore.User, node string) bool {
+func UserHasPermission(user *db.User, node string) bool {
 	for _, permission := range user.Permissions {
 		if permission.PermissionNode == node && permission.HasPermission {
 			return true
