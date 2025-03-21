@@ -44,14 +44,14 @@ func apiEntrypoint(cCtx *cli.Context) error {
 		if databaseBackendParams == "" {
 			log.Fatal("HERMES_SQLITE_FILEPATH is not set")
 		}
-	}
-
-	if databaseBackendName == "postgres" {
+	} else if databaseBackendName == "postgresql" {
 		databaseBackendParams = os.Getenv("HERMES_POSTGRES_DSN")
 
 		if databaseBackendParams == "" {
 			log.Fatal("HERMES_POSTGRES_DSN is not set")
 		}
+	} else {
+		log.Fatalf("Unsupported database backend: %s", databaseBackendName)
 	}
 
 	dbInstance, err := db.New(databaseBackendName, databaseBackendParams)
